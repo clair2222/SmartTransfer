@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
 @Composable
-fun RequestPermissions(permissions: Array<String>, onGranted:() -> Unit, onDenied:()->Unit = {}) {
+fun RequestPermissions(permissions: Array<String>, onGranted:() -> Unit, onDenied: ()->Unit = {}) {
     val context = LocalContext.current
 
     val launcher = rememberLauncherForActivityResult(
