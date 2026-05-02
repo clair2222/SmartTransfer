@@ -26,10 +26,14 @@ import com.jyco.smarttransfer.ui.common.ShowResult
 import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
+import com.jyco.smarttransfer.viewmodel.SenderViewModel
+import org.koin.androidx.compose.koinViewModel
 
 
 @Composable
-fun SenderScreen(navController: NavController){
+fun SenderScreen(navController: NavController,
+                 viewModel: SenderViewModel = koinViewModel()
+){
     var start by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
