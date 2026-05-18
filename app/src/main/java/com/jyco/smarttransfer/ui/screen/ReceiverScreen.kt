@@ -1,11 +1,17 @@
 package com.jyco.smarttransfer.ui.screen
 
+import android.annotation.SuppressLint
+import android.content.IntentFilter
+import android.net.wifi.p2p.WifiP2pManager
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +25,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
+import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
 import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
@@ -27,6 +34,7 @@ import com.jyco.smarttransfer.ui.permission.openAppSettings
 import com.jyco.smarttransfer.viewmodel.ReceiverViewModel
 import org.koin.androidx.compose.koinViewModel
 
+@SuppressLint("MissingPermission")
 @Composable
 fun ReceiverScreen(navController: NavController,
                    viewModel : ReceiverViewModel = koinViewModel()
@@ -38,6 +46,7 @@ fun ReceiverScreen(navController: NavController,
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var requestKey by remember{ mutableIntStateOf(0)}
     var shouldCheckOnResume by remember { mutableStateOf(false) }
+    val devices by viewModel.devices.collectAsState()
 
 
     DisposableEffect(lifecycleOwner){
@@ -48,8 +57,31 @@ fun ReceiverScreen(navController: NavController,
             }
 
         }
+        val receiver = WifiDirectBroadcastReceiver(
+            viewModel.getWifiDirectManager(),
+            onPeerChanged = {
+                //Toast.makeText(context, "Peers changed!", Toast.LENGTH_SHORT).show()
+                viewModel.requestPeers()}
+        )
+        val intentFilter = IntentFilter().apply {
+            addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
+        }
+
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        context.registerReceiver(receiver, intentFilter)
+
+
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.msg.collect{
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
     }
 
     if(requestPermission){
@@ -58,6 +90,8 @@ fun ReceiverScreen(navController: NavController,
             onGranted = {
                 requestPermission = false
                 errorMessage = null
+                //start discovery
+                viewModel.startDiscovery()
             },
             onDenied = {
                 requestPermission = false

@@ -2,7 +2,11 @@ package com.jyco.smarttransfer.ui.screen
 
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.IntentFilter
+import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
 import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
@@ -36,7 +43,7 @@ import com.jyco.smarttransfer.ui.permission.openAppSettings
 import com.jyco.smarttransfer.viewmodel.SenderViewModel
 import org.koin.androidx.compose.koinViewModel
 
-
+@SuppressLint("MissingPermission")
 @Composable
 fun SenderScreen(navController: NavController,
                  viewModel: SenderViewModel = koinViewModel()
@@ -56,8 +63,27 @@ fun SenderScreen(navController: NavController,
                 requestPermission = true
             }
         }
+        val receiver = WifiDirectBroadcastReceiver(
+            viewModel.getWifiDirectManager(),
+            onPeerChanged = {viewModel.requestPeers()}
+        )
+        val intentFilter = IntentFilter().apply{
+            addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
+        }
+
         lifecycle.lifecycle.addObserver(observer)
-        onDispose {lifecycle.lifecycle.removeObserver(observer)  }
+        context.registerReceiver(receiver, intentFilter )
+
+        onDispose {
+            lifecycle.lifecycle.removeObserver(observer)
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.msg.collect{
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
     }
 
 
