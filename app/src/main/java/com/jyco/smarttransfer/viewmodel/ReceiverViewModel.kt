@@ -3,6 +3,7 @@ package com.jyco.smarttransfer.viewmodel
 import android.Manifest
 import android.annotation.SuppressLint
 import android.net.wifi.p2p.WifiP2pDevice
+import android.net.wifi.p2p.WifiP2pManager
 import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,15 +26,34 @@ class ReceiverViewModel(private val wifiDirectManager :WifiDirectManager
  @SuppressLint("MissingPermission")
  fun startDiscovery(){
         wifiDirectManager.discoverPeers(
-            onSuccess = { } ,
-            onFailure = { }
+            onSuccess = {
+                viewModelScope.launch {
+                    _msg.emit("Searching for nearby devices...")
+                }
+            } ,
+            onFailure = { reason->
+                val errorMessage = when(reason){
+                    WifiP2pManager.P2P_UNSUPPORTED ->{
+                        viewModelScope.launch { _msg.emit("Wifi Direct unsupported") }
+                    }
+                    WifiP2pManager.BUSY -> {
+                        viewModelScope.launch {_msg.emit("Wifi Direct busy")  }
+                    }
+                    WifiP2pManager.ERROR -> {
+                        viewModelScope.launch { _msg.emit("Wifi Direct unknown error") }
+                    }
+                    else -> {
+                        viewModelScope.launch { _msg.emit("Wifi Direct Failed") }
+                    }
+                }
+            }
         )
     }
 
 @SuppressLint("MissingPermission")
 fun requestPeers(){
     wifiDirectManager.requestPeers { peers ->
-        _devices.value = peers.toList()
+        updatePeers(peers)
          viewModelScope.launch{
              _msg.emit("Pear changed")
          }
@@ -42,6 +62,9 @@ fun requestPeers(){
 }
 fun updatePeers(peers:Collection<WifiP2pDevice>){
         _devices.value = peers.toList()
+        viewModelScope.launch {
+            _msg.emit("Found ${peers.size} devices")
+        }
     }
 fun getWifiDirectManager() = wifiDirectManager
 }

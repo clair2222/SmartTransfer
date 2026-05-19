@@ -2,6 +2,7 @@ package com.jyco.smarttransfer.viewmodel
 
 import android.Manifest
 import android.net.wifi.p2p.WifiP2pDevice
+import android.net.wifi.p2p.WifiP2pManager
 import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,20 +25,47 @@ class SenderViewModel(private val wifiDirectManager : WifiDirectManager
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     fun startDiscovery(){
         wifiDirectManager.discoverPeers(
-            onSuccess = { } ,
-            onFailure = { TODO() }
+            onSuccess = {
+                viewModelScope.launch {
+                    _msg.emit("Searching for nearby devices...")
+                }
+            } ,
+            onFailure = { reason ->
+                val errormsg = when(reason){
+                    WifiP2pManager.P2P_UNSUPPORTED -> {
+                        "Wi-Fi Direct not supported"
+                    }
+                    WifiP2pManager.BUSY ->{
+                        "Wi-Fi Direct is busy"
+                    }
+                    WifiP2pManager.ERROR ->{
+                        "Unknown Wi-Fi Direct error"
+                    }
+                    else -> {
+                        "Discovery Failed"
+                    }
+                }
+                viewModelScope.launch {
+                    _msg.emit(errormsg)
+                }
+            }
         )
     }
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     fun requestPeers(){
-        wifiDirectManager.requestPeers {it->
-            _devices.value = it.toList()
-            viewModelScope.launch {  _msg.emit("Peer changed") }
-
+        wifiDirectManager.requestPeers {
+            updatePeers(it)
+            viewModelScope.launch {
+                _msg.emit("Peer changed")
+            }
         }
     }
     fun updatePeers(peers : Collection<WifiP2pDevice>){
         _devices.value = peers.toList()
+        viewModelScope.launch {
+            _msg.emit("Found ${peers.size} devices")
+        }
+
     }
     fun getWifiDirectManager() = wifiDirectManager
 }
