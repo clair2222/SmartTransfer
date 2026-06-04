@@ -3,10 +3,12 @@ package com.jyco.smarttransfer.viewmodel
 import android.Manifest
 import android.annotation.SuppressLint
 import android.net.wifi.p2p.WifiP2pDevice
+import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jyco.smarttransfer.data.wifi.WifiDirectManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,25 +25,31 @@ class ReceiverViewModel(private val wifiDirectManager :WifiDirectManager
     private val _msg = MutableSharedFlow<String>()
     val msg = _msg.asSharedFlow()
 
- @SuppressLint("MissingPermission")
- fun startDiscovery(){
+    private val _wifiP2pInfo = MutableStateFlow<WifiP2pInfo?>(null)
+    val wifiP2pInfo : StateFlow<WifiP2pInfo?> = _wifiP2pInfo
+
+    @SuppressLint("MissingPermission")
+    fun startDiscovery() {
         wifiDirectManager.discoverPeers(
             onSuccess = {
                 viewModelScope.launch {
                     _msg.emit("Searching for nearby devices...")
                 }
-            } ,
-            onFailure = { reason->
-                val errorMessage = when(reason){
-                    WifiP2pManager.P2P_UNSUPPORTED ->{
+            },
+            onFailure = { reason ->
+                val errorMessage = when (reason) {
+                    WifiP2pManager.P2P_UNSUPPORTED -> {
                         viewModelScope.launch { _msg.emit("Wifi Direct unsupported") }
                     }
+
                     WifiP2pManager.BUSY -> {
-                        viewModelScope.launch {_msg.emit("Wifi Direct busy")  }
+                        viewModelScope.launch { _msg.emit("Wifi Direct busy") }
                     }
+
                     WifiP2pManager.ERROR -> {
                         viewModelScope.launch { _msg.emit("Wifi Direct unknown error") }
                     }
+
                     else -> {
                         viewModelScope.launch { _msg.emit("Wifi Direct Failed") }
                     }
@@ -50,21 +58,65 @@ class ReceiverViewModel(private val wifiDirectManager :WifiDirectManager
         )
     }
 
-@SuppressLint("MissingPermission")
-fun requestPeers(){
-    wifiDirectManager.requestPeers { peers ->
-        updatePeers(peers)
-         viewModelScope.launch{
-             _msg.emit("Pear changed")
-         }
+    @SuppressLint("MissingPermission")
+    fun requestPeers() {
+        wifiDirectManager.requestPeers { peers ->
+            updatePeers(peers)
+            viewModelScope.launch {
+                _msg.emit("Pear changed")
+            }
 
+        }
     }
-}
-fun updatePeers(peers:Collection<WifiP2pDevice>){
+
+    fun updatePeers(peers: Collection<WifiP2pDevice>) {
         _devices.value = peers.toList()
         viewModelScope.launch {
             _msg.emit("Found ${peers.size} devices")
         }
     }
-fun getWifiDirectManager() = wifiDirectManager
+
+    fun getWifiDirectManager() = wifiDirectManager
+
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
+    fun connectToDevice(device:WifiP2pDevice){
+        wifiDirectManager.connectToDevice(
+            device = device,
+            onSuccess = {
+                viewModelScope.launch {
+                    _msg.emit("Connection request sent to ${device.deviceName}")
+                }
+            },
+            onFailure = { reason ->
+                viewModelScope.launch {
+                    _msg.emit("Connection failed: ${reason.toWifiP2pReasonMessage()}")
+                }
+            }
+        )
+    }
+
+    fun requestConnectionInfo(){
+        wifiDirectManager.requestConnectionInfo {info->
+            _wifiP2pInfo.value = info
+            viewModelScope.launch {
+                if(info.groupFormed){
+                    val role = if(info.isGroupOwner) "Owner" else "Client"
+                    val ip = info.groupOwnerAddress?.hostAddress ?: "Unknown IP"
+                    _msg.emit("Connected as $role. Group owner IP: $ip")
+                } else {
+                    _msg.emit("Connection info received, but group is not formed yet.")
+                }
+
+            }
+        }
+    }
+
+    private fun Int.toWifiP2pReasonMessage():String{
+        return when(this){
+            WifiP2pManager.P2P_UNSUPPORTED->"Wi-Fi Direct not supported"
+            WifiP2pManager.BUSY ->"Wi-Fi Direct is busy"
+            WifiP2pManager.ERROR -> "Internal error"
+            else -> "Unknown error: $this"
+        }
+    }
 }

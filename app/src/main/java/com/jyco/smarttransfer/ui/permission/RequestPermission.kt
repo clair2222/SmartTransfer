@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
+val TAG = "PermissionTest"
+
 @Composable
 fun RequestPermissions(permissions: Array<String>, requestKey : Int,
                        onGranted:() -> Unit, onDenied: ()->Unit = {}) {
@@ -34,22 +36,14 @@ fun RequestPermissions(permissions: Array<String>, requestKey : Int,
 
     LaunchedEffect(requestKey) {
 
-        Log.d("PermissionTest", "LaunchedEffect requestKey=$requestKey")
-        Log.d("PermissionTest", "permissions=${permissions.joinToString()}")
+        Log.d(TAG, "LaunchedEffect requestKey=$requestKey")
+        Log.d(TAG, "permissions=${permissions.joinToString()}")
 
-        val hasAlreadyGranted = permissions.all{ permission ->
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-
-            Log.d("PermissionTest", "$permission granted=$granted")
-            granted
-        }
+        val hasAlreadyGranted = hasPermissions(context = context, permissions = permissions)
 
         if(hasAlreadyGranted) onGranted()
         else {
-            Log.d("PermissionTest", "launch permission request")
+            Log.d(TAG, "launch permission request")
             launcher.launch(permissions)
         }
 
@@ -71,4 +65,13 @@ fun openAppSettings(context: Context){
 
     context.startActivity(intent)
 }
+
+fun hasPermissions(context: Context, permissions: Array<String>): Boolean{
+    return permissions.all {permission ->
+        val granted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        Log.d(TAG, "$permission granted =$granted")
+        granted
+    }
+}
+
 

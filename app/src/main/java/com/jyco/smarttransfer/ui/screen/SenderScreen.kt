@@ -65,10 +65,12 @@ fun SenderScreen(navController: NavController,
         }
         val receiver = WifiDirectBroadcastReceiver(
             viewModel.getWifiDirectManager(),
-            onPeerChanged = {viewModel.requestPeers()}
+            onPeerChanged = {viewModel.requestPeers()},
+            onConnectionChanged = {viewModel.requestConnectionInfo()}
         )
         val intentFilter = IntentFilter().apply{
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
+            addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         }
 
         lifecycle.lifecycle.addObserver(observer)
@@ -93,6 +95,7 @@ fun SenderScreen(navController: NavController,
             onGranted = {
                 requestPermission = false
                 errorMessage = null
+                viewModel.startDiscovery()
             },
             onDenied = {
                 requestPermission = false
@@ -110,6 +113,14 @@ fun SenderScreen(navController: NavController,
                 shouldCheckOnResume = true
                 openAppSettings(context)
             })
+    } ?: SenderTestScreen()
+}
+
+@Preview
+@Composable
+fun SenderTestScreen(){
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
+        Text(text = "This is Sender Screen")
     }
 }
 
