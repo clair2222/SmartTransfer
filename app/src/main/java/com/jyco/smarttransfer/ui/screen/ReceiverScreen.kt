@@ -129,7 +129,7 @@ fun ReceiverScreen(navController: NavController,
 fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
-        Text(text = "This is Reciever Screen")
+        Text(text = "This is Receiver Screen")
     }
     LazyColumn {
         items(devices){device->

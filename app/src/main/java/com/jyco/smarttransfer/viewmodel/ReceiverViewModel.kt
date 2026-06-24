@@ -9,6 +9,7 @@ import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jyco.smarttransfer.data.socket.SocketManager
 import com.jyco.smarttransfer.data.wifi.WifiDirectManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
-class ReceiverViewModel(private val wifiDirectManager :WifiDirectManager
+class ReceiverViewModel(
+    private val wifiDirectManager :WifiDirectManager,
+    private val socketManager: SocketManager
 ) : ViewModel() {
 
     private val _devices = MutableStateFlow<List<WifiP2pDevice>>(emptyList())
@@ -118,5 +121,10 @@ class ReceiverViewModel(private val wifiDirectManager :WifiDirectManager
             WifiP2pManager.ERROR -> "Internal error"
             else -> "Unknown error: $this"
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        socketManager.close()
     }
 }
