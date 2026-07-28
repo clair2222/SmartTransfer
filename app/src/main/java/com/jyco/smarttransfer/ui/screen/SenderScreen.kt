@@ -4,20 +4,27 @@ package com.jyco.smarttransfer.ui.screen
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.IntentFilter
+import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresPermission
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +62,7 @@ fun SenderScreen(navController: NavController,
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var requestKey by remember { mutableIntStateOf(1000) }
     var shouldCheckOnResume by remember { mutableStateOf(false) }
+    val devices by viewModel.devices.collectAsState()
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver{ _, event ->
@@ -113,15 +121,24 @@ fun SenderScreen(navController: NavController,
                 shouldCheckOnResume = true
                 openAppSettings(context)
             })
-    } ?: SenderTestScreen()
+    } ?: SenderContent(devices, viewModel)
 }
 
-@Preview
+
+@RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
-fun SenderTestScreen(){
+fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
         Text(text = "This is Sender Screen")
     }
+
+//    LazyColumn {
+//        items(devices){device->
+//            ListItem(headlineContent = {Text(device.deviceName)},
+//                leadingContent = { Text(device.deviceAddress) },
+//                modifier = Modifier.clickable { viewModel.connectToDevice(device) })
+//        }
+//    }
 }
 
 

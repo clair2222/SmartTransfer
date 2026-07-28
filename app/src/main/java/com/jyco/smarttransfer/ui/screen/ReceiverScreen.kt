@@ -1,10 +1,12 @@
 package com.jyco.smarttransfer.ui.screen
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.widget.Toast
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -124,7 +126,7 @@ fun ReceiverScreen(navController: NavController,
 
 }
 
-@SuppressLint("MissingPermission")
+@RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
 fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
 

@@ -13,6 +13,7 @@ import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.hasPermissions
 
 class WifiDirectManager(private val context : Context) {
+    private val TAG = WifiDirectManager::class.java.simpleName
     private val manager = context.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
     private val channel = manager.initialize(context,
         context.mainLooper,
@@ -52,7 +53,7 @@ class WifiDirectManager(private val context : Context) {
             wps.setup = WpsInfo.PBC
         }
 
-        manager.connect(channel, config, object: WifiP2pManager.ActionListener{
+        manager.connect(channel, config, object : WifiP2pManager.ActionListener {
             override fun onFailure(reason: Int) {
                 onFailure(reason)
             }
