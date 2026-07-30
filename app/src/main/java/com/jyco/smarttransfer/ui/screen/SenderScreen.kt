@@ -131,7 +131,7 @@ fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
         Text(text = "This is Sender Screen")
     }
-
+//only Receiver can select a device to connect.
 //    LazyColumn {
 //        items(devices){device->
 //            ListItem(headlineContent = {Text(device.deviceName)},

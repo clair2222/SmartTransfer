@@ -125,8 +125,10 @@ class ReceiverViewModel(
                     if(socket != null){
                         _connectionState.value = ConnectionState.SocketConnected
                         _msg.emit("Receiver : Connected as Server - Group Owner")
+                        Log.d(TAG, "Receiver : Connected as Server - Group Owner")
                     }else{
                         _msg.emit("Receiver : Server socket stopped - Group Owner")
+                        Log.d(TAG, "Receiver : Server socket stopped - Group Owner")
                     }
                 }else {
                     Log.d(TAG, "Receiver : handleConnectionInfo : info.isGroupOwner false")
@@ -148,7 +150,7 @@ class ReceiverViewModel(
                     }
                 }
             }else{
-                Log.d(TAG, "Receiver : handleConnectionInfo : ${info.groupFormed}")
+                Log.d(TAG, "Receiver : Connection info received, but group is not formed yet")
                 _msg.emit("Receiver : Connection info received, but group is not formed yet.")
             }
         }

@@ -101,9 +101,11 @@ class SenderViewModel(
                     if(server != null){
                         _connectionState.value = ConnectionState.SocketConnected
                         _msg.emit("Sender : Connected as Server")
+                        Log.d(TAG, "Sender : Connected as Server")
                     }else{
                         _connectionState.value = ConnectionState.Failed
                         _msg.emit("Sender : Server socket stopped - Group Owner")
+                        Log.d(TAG, "Sender : Server socket stopped - Group Owner")
                     }
                 }else {
                     Log.d(TAG, "Sender : handleConnectionInfo : info.isGroupOwner false")
@@ -116,16 +118,19 @@ class SenderViewModel(
                         if(client != null){
                             _connectionState.value = ConnectionState.SocketConnected
                             _msg.emit("Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
+                            Log.d(TAG, "Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
                         }else{
                             _connectionState.value = ConnectionState.Failed
                             _msg.emit("Sender : Client Socket stopped : Group Host IP is ${hostAddress}")
+                            Log.d(TAG, "Sender : Client Socket stopped : Group Host IP is ${hostAddress}")
                         }
                     }else{
                         _msg.emit("Sender : Unknown IP")
+                        Log.d(TAG, "Sender : Unknown IP")
                     }
                 }
             }else{
-                Log.d(TAG, "Sender : handleConnectionInfo : ${info.groupFormed}")
+                Log.d(TAG, "Sender : Connection info received, but group is not formed yet.")
                 _msg.emit("Sender : Connection info received, but group is not formed yet.")
             }
         }
