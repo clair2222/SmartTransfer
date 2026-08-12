@@ -91,7 +91,11 @@ class SenderViewModel(
         }
     }
 
-    fun handleConnectionInfo(info : WifiP2pInfo){
+    private fun onSenderSocketConnected(){
+
+    }
+
+    private fun handleConnectionInfo(info : WifiP2pInfo){
         viewModelScope.launch {
             if(info.groupFormed){
                 if(info.isGroupOwner) {
@@ -102,6 +106,7 @@ class SenderViewModel(
                         _connectionState.value = ConnectionState.SocketConnected
                         _msg.emit("Sender : Connected as Server")
                         Log.d(TAG, "Sender : Connected as Server")
+                        onSenderSocketConnected()
                     }else{
                         _connectionState.value = ConnectionState.Failed
                         _msg.emit("Sender : Server socket stopped - Group Owner")
@@ -119,6 +124,7 @@ class SenderViewModel(
                             _connectionState.value = ConnectionState.SocketConnected
                             _msg.emit("Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
                             Log.d(TAG, "Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
+                            onSenderSocketConnected()
                         }else{
                             _connectionState.value = ConnectionState.Failed
                             _msg.emit("Sender : Client Socket stopped : Group Host IP is ${hostAddress}")

@@ -1,5 +1,7 @@
 package com.jyco.smarttransfer.data.socket
 
+import kotlin.random.Random
+
 object AuthProtocal {
     private const val AUTH_PREFIX = "AUTH|"
     const val AUTH_OK = "AUTH_OK"
@@ -9,13 +11,19 @@ object AuthProtocal {
         return AUTH_PREFIX+pin
 
     }
-    fun parsePin(message:String): String? {
-        if(!message.startsWith(AUTH_PREFIX)){
+    fun parsePin(message:String?): String? {
+        if(message?.startsWith(AUTH_PREFIX) == true){
             return null
         }
-        return message
-            .removePrefix((AUTH_PREFIX))
-            .takeIf{it.matches(Regex("\\d{6}"))}
+        if (message != null) {
+            return message
+                .removePrefix((AUTH_PREFIX))
+                .takeIf{it.matches(Regex("\\d{6}"))}
+        } else
+            return null
+    }
+    fun generatePin():String{
+        return Random.nextInt(100_000, 1_000_000).toString()
     }
 
 }

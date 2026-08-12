@@ -10,6 +10,11 @@ import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jyco.smarttransfer.data.socket.AuthProtocal
+import com.jyco.smarttransfer.data.socket.AuthProtocal.AUTH_FAIL
+import com.jyco.smarttransfer.data.socket.AuthProtocal.AUTH_OK
+import com.jyco.smarttransfer.data.socket.AuthProtocal.generatePin
+import com.jyco.smarttransfer.data.socket.AuthProtocal.parsePin
 import com.jyco.smarttransfer.data.socket.SocketManager
 import com.jyco.smarttransfer.data.wifi.WifiDirectManager
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,6 +43,12 @@ class ReceiverViewModel(
 
     private val _connectionState = MutableStateFlow(ConnectionState.Idle)
     val conncetionState = _connectionState.asStateFlow()
+
+    private val _authPin = MutableStateFlow<String?>(null)
+    val authPin : StateFlow<String?> = _authPin
+
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError : StateFlow<String?> = _authError
 
     private var isStartSocket = false
 
@@ -126,7 +137,9 @@ class ReceiverViewModel(
                         _connectionState.value = ConnectionState.SocketConnected
                         _msg.emit("Receiver : Connected as Server - Group Owner")
                         Log.d(TAG, "Receiver : Connected as Server - Group Owner")
+                        startReceivierAuthentication()
                     }else{
+                        //_connectionState.value = ConnectionState.Failed
                         _msg.emit("Receiver : Server socket stopped - Group Owner")
                         Log.d(TAG, "Receiver : Server socket stopped - Group Owner")
                     }
@@ -141,6 +154,7 @@ class ReceiverViewModel(
                         if(socket != null){
                             _connectionState.value = ConnectionState.SocketConnected
                             _msg.emit("Receiver : Connected as Client : Group Host IP is ${hostAddress}")
+                            startReceivierAuthentication()
                         }else{
                             _connectionState.value = ConnectionState.Failed
                             _msg.emit("Receiver : Client Socket stopped : Group Host IP is ${hostAddress}")
@@ -169,5 +183,69 @@ class ReceiverViewModel(
         super.onCleared()
         socketManager.close()
         _connectionState.value = ConnectionState.Idle
+    }
+
+    private fun startReceivierAuthentication(){
+
+        if(_connectionState.value == ConnectionState.Authenticating ||
+            _connectionState.value == ConnectionState.Authenticated){
+            return
+        }
+        val pin = generatePin()
+        _authPin.value = pin
+        _connectionState.value = ConnectionState.Authenticating
+
+        Log.d(TAG, "Receiver : authentication started")
+        viewModelScope.launch {
+            val message = socketManager.readLines().getOrElse { exception: Throwable ->
+                _connectionState.value = ConnectionState.Failed
+                Log.e(TAG, exception.toString())
+                _authError.value = "Failed to receive authentication pin"
+                return@launch
+            }
+            if(message == pin){
+                handleAuthSuccess(message)
+            }else{
+                handleAuthFailue(message)
+            }
+
+ /*           val message = socketManager.readLines().getOrNull()
+            parsePin(message)?.let{
+                if(it == authPin.value) {
+                    handleAuthSuccess(it)
+                }else{
+                    handleAuthFailue(it)
+                }
+            } ?: run {
+                _authError.value = "Failed to receive authentication request"
+                //_connectionState.value = ConnectionState.Failed
+            }
+
+  */
+        }
+
+    }
+    private suspend fun handleAuthSuccess(message : String){
+        val result = socketManager.sendLines(AUTH_OK)
+        if(result.isSuccess){
+            _authPin.value = null
+            _authError.value = null
+            _connectionState.value = ConnectionState.Authenticated
+            Log.d(TAG, "Receiver : handleAuthSuccess : authentication Success")
+        }else{
+            val message = "fail to send result of auth_ok"
+            _authError.value = message
+            _connectionState.value = ConnectionState.Failed
+            Log.e(TAG, "Receiver : handleAuthSuccess : $message")
+        }
+    }
+    private suspend fun handleAuthFailue(message : String){
+        socketManager.sendLines(AUTH_FAIL)
+        val errorMessage = "Received pin is {$message}, It should be {$_authPin}"
+        _authError.value = errorMessage
+        _connectionState.value = ConnectionState.Failed
+        Log.e(TAG, "Receiver : pin authentication Failed - $errorMessage")
+
+
     }
 }
