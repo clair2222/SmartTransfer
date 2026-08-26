@@ -35,3 +35,6 @@ val OnBackgroundDark = Color(0xFFE4E2E6)
 
 val SurfaceDark = Color(0xFF121316)
 val OnSurfaceDark = Color(0xFFE4E2E6)
+
+val Error = Color(0xFFF44336)
+val onError = Color(0xFDC3C30F)

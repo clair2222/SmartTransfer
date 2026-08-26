@@ -4,13 +4,16 @@ import android.Manifest
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jyco.smarttransfer.data.socket.AuthProtocal
 import com.jyco.smarttransfer.data.socket.SocketManager
 import com.jyco.smarttransfer.data.wifi.WifiDirectManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +35,10 @@ class SenderViewModel(
     private val _wifiP2pInfo = MutableStateFlow<WifiP2pInfo?>(null)
     val wifiP2pInfo : StateFlow<WifiP2pInfo?> = _wifiP2pInfo
     
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
-    val connectionState : MutableStateFlow<ConnectionState> = _connectionState
+    private val _connectionState = MutableStateFlow(ConnectionState.Idle)
+    val connectionState : StateFlow<ConnectionState> = _connectionState
+
+    private var isSocketStarted = false
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     fun startDiscovery(){
@@ -45,6 +50,7 @@ class SenderViewModel(
                 }
             } ,
             onFailure = { reason ->
+                _connectionState.value = ConnectionState.Failed
                 viewModelScope.launch {
                     _msg.emit(reason.toWifiP2pReasonMessage())
                 }
@@ -60,7 +66,7 @@ class SenderViewModel(
             }
         }
     }
-    fun updatePeers(peers : Collection<WifiP2pDevice>){
+    private fun updatePeers(peers : Collection<WifiP2pDevice>){
         _devices.value = peers.toList()
         viewModelScope.launch {
             _msg.emit("Sender : Found ${peers.size} devices")
@@ -69,75 +75,135 @@ class SenderViewModel(
     }
     fun getWifiDirectManager() = wifiDirectManager
 
+    @RequiresApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     fun connectToDevice(device:WifiP2pDevice){
         _connectionState.value = ConnectionState.P2PConnecting
         wifiDirectManager.connectToDevice(device,
             onSuccess = {
-                _connectionState.value = ConnectionState.P2PConnected
                 viewModelScope.launch { _msg.emit("Sender : Connection request sent to ${device.deviceName}") }
             },
             onFailure = {reason->
                 _connectionState.value = ConnectionState.Failed
-                viewModelScope.launch { _msg.emit("Sender : Connection failed: ${reason.toWifiP2pReasonMessage()}") }
+                viewModelScope.launch {
+                    _msg.emit("Sender : Connection failed: ${reason.toWifiP2pReasonMessage()}")
+                    delay(1000)
+
+                    requestConnectionInfo()
+                }
             })
     }
+    @RequiresApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     fun requestConnectionInfo( ){
-        _connectionState.value = ConnectionState.SocketConnecting
 
         wifiDirectManager.requestConnectionInfo { info->
             _wifiP2pInfo.value = info
             handleConnectionInfo(info)
         }
     }
+    private val _enteredPin = MutableStateFlow<String>("")
+    val enteredPin : StateFlow<String> = _enteredPin
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError : StateFlow<String?> = _authError
 
-    private fun onSenderSocketConnected(){
+
+    fun updatePin(enteredPin : String){
+        _enteredPin.value = enteredPin
+    }
+    fun submitPin(){
+        if(_connectionState.value != ConnectionState.Authenticating){
+            Log.d(TAG, "Sender : submitPin : not in Authentication - $_connectionState.value")
+            return
+        }
+
+        viewModelScope.launch {
+            val request = AuthProtocal.createAuthRequest(_enteredPin.value)
+            val result = socketManager.sendLines(request)
+
+            if(result.isFailure){
+                Log.d(TAG, "Sender : submitPin : Failed to send Pin")
+                _authError.value = "Sender : failed to send Pin"
+                _connectionState.value = ConnectionState.Failed
+                return@launch
+            }
+
+            waitForAuthenticationResult()
+
+        }
+
+
+    }
+    private suspend fun waitForAuthenticationResult(){
+        val response = socketManager.readLines().getOrElse { throwable ->
+            Log.e(TAG, "Failed to receive auth response", throwable)
+            _authError.value = "Failed to receive auth response"
+            _connectionState.value = ConnectionState.Failed
+            return
+        }
+        when(response){
+            AuthProtocal.AUTH_OK -> {
+                _authError.value = null
+                _connectionState.value = ConnectionState.Authenticated
+                Log.d(TAG, "Sender authentication successful ")
+            }
+            AuthProtocal.AUTH_FAIL -> {
+                _authError.value = "Incorrect Pin"
+                _connectionState.value = ConnectionState.Failed
+                Log.e(TAG, "Incorrect Pin: ")
+            }
+            else ->{
+                _authError.value = "Invalid authentication response"
+                _connectionState.value = ConnectionState.Failed
+                Log.e(TAG, "Unknown auth response: $response")
+            }
+        }
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     private fun handleConnectionInfo(info : WifiP2pInfo){
         viewModelScope.launch {
-            if(info.groupFormed){
-                if(info.isGroupOwner) {
-                    Log.d(TAG, "Sender : handleConnectionInfo : info.isGroupOwner true")
-                    _msg.emit("Sender : Group Owner")
-                    var server = socketManager.startServerSocket()
-                    if(server != null){
-                        _connectionState.value = ConnectionState.SocketConnected
-                        _msg.emit("Sender : Connected as Server")
-                        Log.d(TAG, "Sender : Connected as Server")
-                        onSenderSocketConnected()
-                    }else{
-                        _connectionState.value = ConnectionState.Failed
-                        _msg.emit("Sender : Server socket stopped - Group Owner")
-                        Log.d(TAG, "Sender : Server socket stopped - Group Owner")
-                    }
-                }else {
-                    Log.d(TAG, "Sender : handleConnectionInfo : info.isGroupOwner false")
-                    _msg.emit("Sender : Group Client")
-                    val hostAddress = info.groupOwnerAddress?.hostAddress
-                    Log.d(TAG, "Sender : handleConnectionInfo : ${info.groupOwnerAddress}")
-                    if (hostAddress != null) {
-                        _msg.emit("Sender : Client : Group Host IP is ${hostAddress}")
-                        var client = socketManager.startClientSocket(hostAddress)
-                        if(client != null){
-                            _connectionState.value = ConnectionState.SocketConnected
-                            _msg.emit("Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
-                            Log.d(TAG, "Sender : Connected as Client : Group Host IP is ${hostAddress}\"")
-                            onSenderSocketConnected()
-                        }else{
-                            _connectionState.value = ConnectionState.Failed
-                            _msg.emit("Sender : Client Socket stopped : Group Host IP is ${hostAddress}")
-                            Log.d(TAG, "Sender : Client Socket stopped : Group Host IP is ${hostAddress}")
-                        }
-                    }else{
-                        _msg.emit("Sender : Unknown IP")
-                        Log.d(TAG, "Sender : Unknown IP")
-                    }
-                }
-            }else{
+
+            if (!info.groupFormed) {
                 Log.d(TAG, "Sender : Connection info received, but group is not formed yet.")
                 _msg.emit("Sender : Connection info received, but group is not formed yet.")
+                return@launch
+            }
+            if(isSocketStarted){
+                Log.d(TAG, "Sender : Socket Already started - ignore")
+                return@launch
+            }
+
+            isSocketStarted = true
+
+            onP2PConnected()
+
+            if (info.isGroupOwner) {
+                val server = socketManager.startServerSocket()
+                var message = "Sender : GroupOwner"
+                if (server != null) {
+                    message += " - Server"
+                    onSocketConnected(message)
+                } else {
+                    message += " - Server socket stopped"
+                    onSocketConnectionFailed(message)
+                }
+            } else {
+                val hostAddress = info.groupOwnerAddress?.hostAddress
+                var message = "Sender : Client"
+                if (hostAddress != null) {
+                    val client = socketManager.startClientSocket(hostAddress)
+                    message += " - $hostAddress"
+                    if (client != null) {
+                        onSocketConnected(message)
+                    } else {
+                        message += " - Socket stopped"
+                        onSocketConnectionFailed(message)
+                    }
+                } else {
+                    message += " - Unknown IP"
+                    onSocketConnectionFailed(message)
+                }
             }
         }
     }
@@ -155,5 +221,46 @@ class SenderViewModel(
     override fun onCleared() {
         super.onCleared()
         socketManager.close()
+        _connectionState.value = ConnectionState.Idle
+    }
+
+    fun resetSession(onComplete  : ()->Unit){
+        Log.d(TAG, "Sender : reset Session")
+        socketManager.close()
+        wifiDirectManager.resetConnection {
+            Log.d(TAG, "Sender : Wi-Fi Direct session reset")
+            onComplete()
+        }
+        isSocketStarted = false
+        _enteredPin.value = ""
+        _authError.value = null
+        _devices.value = emptyList()
+        _wifiP2pInfo.value = null
+        _connectionState.value = ConnectionState.Idle
+    }
+
+    private fun onP2PConnected(){
+        _connectionState.value = ConnectionState.P2PConnected
+        Log.d(TAG, "Sender : onP2PConnected, starting socket")
+
+        startSocketConnection()
+    }
+    private fun startSocketConnection(){
+        _connectionState.value = ConnectionState.SocketConnecting
+    }
+    private suspend fun onSocketConnected(message : String){
+        _connectionState.value = ConnectionState.SocketConnected
+        val logMessage = message+" - onSocketConnected"
+        _msg.emit( "$logMessage")
+        Log.d(TAG, "$logMessage")
+        _enteredPin.value = ""
+        _authError.value = null
+        _connectionState.value = ConnectionState.Authenticating
+    }
+    private suspend fun onSocketConnectionFailed(message : String){
+        _connectionState.value = ConnectionState.Failed
+        val logMessage = message+" - onSocketConnectionFailed"
+        _msg.emit("$logMessage")
+        Log.d(TAG, "$logMessage")
     }
 }

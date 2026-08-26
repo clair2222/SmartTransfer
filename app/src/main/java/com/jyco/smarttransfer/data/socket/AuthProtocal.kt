@@ -11,16 +11,14 @@ object AuthProtocal {
         return AUTH_PREFIX+pin
 
     }
-    fun parsePin(message:String?): String? {
-        if(message?.startsWith(AUTH_PREFIX) == true){
-            return null
+    fun parsePin(message:String?): String {
+        if (message == null) return ""
+
+        if(!message.startsWith(AUTH_PREFIX)){
+            return ""
         }
-        if (message != null) {
-            return message
-                .removePrefix((AUTH_PREFIX))
-                .takeIf{it.matches(Regex("\\d{6}"))}
-        } else
-            return null
+        return message.removePrefix((AUTH_PREFIX))
+            .takeIf{it.matches(Regex("\\d{6}"))}.toString()
     }
     fun generatePin():String{
         return Random.nextInt(100_000, 1_000_000).toString()

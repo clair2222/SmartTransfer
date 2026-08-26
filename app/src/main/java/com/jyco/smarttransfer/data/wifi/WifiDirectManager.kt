@@ -1,6 +1,7 @@
 package com.jyco.smarttransfer.data.wifi
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
@@ -8,7 +9,9 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.util.Log
 import androidx.annotation.RequiresPermission
+import androidx.compose.runtime.Composable
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.hasPermissions
 
@@ -71,4 +74,71 @@ class WifiDirectManager(private val context : Context) {
         }
 
     }
+
+    @SuppressLint("MissingPermission")
+    fun resetConnection(
+        onComplete: () -> Unit
+    ) {
+        manager.stopPeerDiscovery(
+            channel,
+            object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Log.d(TAG, "stopPeerDiscovery success")
+                    cancelConnection(onComplete)
+                }
+
+                override fun onFailure(reason: Int) {
+                    Log.d(TAG, "stopPeerDiscovery failed: $reason")
+                    cancelConnection(onComplete)
+                }
+            }
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun cancelConnection(
+        onComplete: () -> Unit
+    ) {
+        manager.cancelConnect(
+            channel,
+            object : WifiP2pManager.ActionListener {
+
+                override fun onSuccess() {
+                    Log.d(TAG, "cancelConnect success")
+                    removeCurrentGroup(onComplete)
+                }
+
+                override fun onFailure(reason: Int) {
+                    Log.d(TAG, "cancelConnect failed: $reason")
+
+                    // negotiation 중이 아닐 수도 있으므로 group 제거 시도
+                    removeCurrentGroup(onComplete)
+                }
+            }
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun removeCurrentGroup(
+        onComplete: () -> Unit
+    ) {
+        manager.removeGroup(
+            channel,
+            object : WifiP2pManager.ActionListener {
+
+                override fun onSuccess() {
+                    Log.d(TAG, "removeGroup success")
+                    onComplete()
+                }
+
+                override fun onFailure(reason: Int) {
+                    Log.d(TAG, "removeGroup failed: $reason")
+
+                    // 기존 group 자체가 없을 수도 있음
+                    onComplete()
+                }
+            }
+        )
+    }
+
 }

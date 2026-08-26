@@ -5,33 +5,24 @@ import android.annotation.SuppressLint
 import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -45,9 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -62,6 +51,7 @@ import com.jyco.smarttransfer.ui.permission.openAppSettings
 import com.jyco.smarttransfer.viewmodel.ConnectionState
 import com.jyco.smarttransfer.viewmodel.ReceiverViewModel
 import org.koin.androidx.compose.koinViewModel
+
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -86,12 +76,15 @@ fun ReceiverScreen(navController: NavController,
             }
 
         }
+        val TAG = "ReceiverScreen"
         val receiver = WifiDirectBroadcastReceiver(
             viewModel.getWifiDirectManager(),
-            onPeerChanged = {
-                //Toast.makeText(context, "Peers changed!", Toast.LENGTH_SHORT).show()
-                viewModel.requestPeers()},
-            onConnectionChanged = {viewModel.requestConnectionInfo()}
+            onPeerChanged = {viewModel.requestPeers()
+                Log.d(TAG, "PEERS_CHANGED")
+            },
+            onConnectionChanged = {viewModel.requestConnectionInfo()
+                Log.d(TAG, "Receiver : CONNECTION_CHANGED")
+            }
         )
         val intentFilter = IntentFilter().apply {
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
@@ -100,8 +93,6 @@ fun ReceiverScreen(navController: NavController,
 
         lifecycleOwner.lifecycle.addObserver(observer)
         context.registerReceiver(receiver, intentFilter)
-
-
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
@@ -122,7 +113,10 @@ fun ReceiverScreen(navController: NavController,
                 requestPermission = false
                 errorMessage = null
                 //start discovery
-                viewModel.startDiscovery()
+                viewModel.resetSession{
+                    viewModel.startDiscovery()
+                }
+
             },
             onDenied = {
                 requestPermission = false
@@ -164,10 +158,10 @@ fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
         ConnectionState.P2PConnected
                 //-> SearchingContent()
             -> SearchingContent(subTitle = when(connectionState) {
-            ConnectionState.Ready -> "Select a Device to connect as a Sender"
-            ConnectionState.P2PConnected -> "Connected"
-            else -> "Searching..."
-        }, devices, viewModel)
+                ConnectionState.Ready -> "Select a Device to connect as a Sender"
+                ConnectionState.P2PConnected -> "Connected"
+                else -> "Searching..." },
+            devices, viewModel)
 
         ConnectionState.SocketConnecting,
         ConnectionState.SocketConnected,
@@ -176,9 +170,9 @@ fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
              -> PinContent(subTitle = when(connectionState){
                     ConnectionState.Authenticating -> "Enter below pin number on the Sender Device"
                     ConnectionState.Authenticated -> "Authenticated"
-                else -> "Connecting..."
+                    else -> "Connecting..."
              },
-            pin.toString())
+            pin)
         //ConnectionState.Transfer -> TODO()
         //ConnectionState.Disconnected -> TODO()
         //ConnectionState.Failed -> TODO()
@@ -204,8 +198,7 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
         .background(MaterialTheme.colorScheme.surface)
         .border(
             border = BorderStroke(
-                width = 2.dp,
-                color = MaterialTheme.colorScheme.surfaceContainer
+                width = 2.dp, color = MaterialTheme.colorScheme.surfaceContainer
             )
         )
         .fillMaxWidth(),
@@ -224,8 +217,8 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
                 ListItem(
                     headlineContent = { Text(device.deviceName.ifBlank { "Unknown Device" }) },
                     supportingContent = { Text(device.deviceAddress) },
-                    modifier = Modifier.clickable {  }
-                    //modifier = Modifier.clickable { viewModel.connectToDevice(device) }
+                    //modifier = Modifier.clickable {  }
+                    modifier = Modifier.clickable { viewModel.connectToDevice(device) }
                 )
             }
         }
@@ -235,22 +228,23 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
 
 @Composable
 fun IdleContent(){
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
-        Text(text = "This is Receiver Screen", style = MaterialTheme.typography.displayLarge)
-    }
+//    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
+//        Text(text = "This is Receiver Screen",
+//            style = MaterialTheme.typography.headlineSmall,
+//            color = MaterialTheme.colorScheme.secondary,)
+//    }
 }
 
 //@Preview
 @Composable
 //fun PinContent(){
-fun PinContent(subTitle : String, pin : String){
+fun PinContent(subTitle : String, pin : String?){
     //val subTitle = "Enter below pin number on the Sender Device"
     Column(modifier = Modifier
         .background(MaterialTheme.colorScheme.surface)
         .border(
             border = BorderStroke(
-                width = 2.dp,
-                color = MaterialTheme.colorScheme.surfaceContainer
+                width = 2.dp, color = MaterialTheme.colorScheme.surfaceContainer
             )
         )
         .fillMaxWidth(),
@@ -264,38 +258,43 @@ fun PinContent(subTitle : String, pin : String){
             color = MaterialTheme.colorScheme.secondary,
             textAlign = TextAlign.Center)
         Spacer(Modifier.weight(1.0f))
-        LazyRow(modifier = Modifier.padding(top = 10.dp, bottom = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
 
-        ) {
-            //val list = "123456".toList()
-            val list = pin.toList()
-            items(list){ number->
-                Text(text = number.toString(),
-                    style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                /*
-                OutlinedButton(onClick = {},
-                    colors = ButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        disabledContentColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                    //shape = ButtonDefaults.outlinedShape,
-                    modifier = Modifier.padding(2.dp)) {
-                    Text(text = number.toString(), style = MaterialTheme.typography.headlineLarge/*, color = MaterialTheme.colorScheme.onPrimary*/)
+        pin?.let{ currentPin->
+            LazyRow(modifier = Modifier.padding(top = 10.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+
+            ) {
+                //val list = "123456".toList()
+                val list = currentPin.toList()
+                items(list){ number->
+                    Text(text = number.toString(),
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    /*
+                    OutlinedButton(onClick = {},
+                        colors = ButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            disabledContentColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                        //shape = ButtonDefaults.outlinedShape,
+                        modifier = Modifier.padding(2.dp)) {
+                        Text(text = number.toString(), style = MaterialTheme.typography.headlineLarge/*, color = MaterialTheme.colorScheme.onPrimary*/)
+                    }
+
+                     */
                 }
 
-                 */
             }
+            Spacer(Modifier.weight(1.0f))
 
+            CircularProgressIndicator(modifier = Modifier.padding(bottom = 10.dp))
+            Text(text = "Wating for authentication...",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.weight(1.0f))
         }
-        Spacer(Modifier.weight(1.0f))
-        CircularProgressIndicator()
-        Text(text = "Wating for authentication",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.secondary)
-        Spacer(Modifier.weight(1.0f))
+
     }
 }

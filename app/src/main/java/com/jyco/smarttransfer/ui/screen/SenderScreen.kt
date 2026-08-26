@@ -6,19 +6,17 @@ import android.annotation.SuppressLint
 import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
-import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,12 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
@@ -47,8 +43,11 @@ import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.openAppSettings
+import com.jyco.smarttransfer.viewmodel.ConnectionState
+import com.jyco.smarttransfer.viewmodel.ConnectionState.Authenticated
 import com.jyco.smarttransfer.viewmodel.SenderViewModel
 import org.koin.androidx.compose.koinViewModel
+
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -71,10 +70,15 @@ fun SenderScreen(navController: NavController,
                 requestPermission = true
             }
         }
+        val TAG = "SenderScreen"
         val receiver = WifiDirectBroadcastReceiver(
             viewModel.getWifiDirectManager(),
-            onPeerChanged = {viewModel.requestPeers()},
-            onConnectionChanged = {viewModel.requestConnectionInfo()}
+            onPeerChanged = {viewModel.requestPeers()
+                Log.d(TAG, "Sender : PEERS_CHANGED")
+            },
+            onConnectionChanged = {viewModel.requestConnectionInfo()
+                Log.d(TAG, "Sender : CONNECTION_CHANGED")
+            }
         )
         val intentFilter = IntentFilter().apply{
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
@@ -103,7 +107,8 @@ fun SenderScreen(navController: NavController,
             onGranted = {
                 requestPermission = false
                 errorMessage = null
-                viewModel.startDiscovery()
+                viewModel.resetSession{viewModel.startDiscovery()}
+
             },
             onDenied = {
                 requestPermission = false
@@ -128,17 +133,66 @@ fun SenderScreen(navController: NavController,
 @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
 fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center ){
-        Text(text = "This is Sender Screen")
+    val state by viewModel.connectionState.collectAsState()
+    val enteredPin by viewModel.enteredPin.collectAsState()
+    var subTitle = "This is Sender Screen"
+    var inProgress = remember{ mutableStateOf(false) }
+
+    when(state){
+        ConnectionState.Idle ->{
+            subTitle = "This is Sender Screen"
+            inProgress.value = false
+        }
+
+        ConnectionState.Discovering,
+        ConnectionState.Ready,
+        ConnectionState.P2PConnecting,
+        ConnectionState.P2PConnected,
+        ConnectionState.SocketConnecting,
+        ConnectionState.SocketConnected  -> {
+            subTitle = "Connecting Devices..."
+            inProgress.value = true
+        }
+
+        ConnectionState.Authenticating ->{
+            subTitle = "Enter Pin what you are seeing on Receiver Devices."
+            inProgress.value = false
+        }
+
+        ConnectionState.Authenticated -> {
+            subTitle = "Authentication Success"
+            inProgress.value = false
+        }
+        ConnectionState.Failed -> {
+            subTitle = "Connection Failed."
+        }
+        else -> {
+//                Transfer,
+//                Disconnected,
+        }
     }
-//only Receiver can select a device to connect.
-//    LazyColumn {
-//        items(devices){device->
-//            ListItem(headlineContent = {Text(device.deviceName)},
-//                leadingContent = { Text(device.deviceAddress) },
-//                modifier = Modifier.clickable { viewModel.connectToDevice(device) })
-//        }
-//    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)
+        , verticalArrangement = Arrangement.Center
+        , horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.weight(1.0f))
+        Text(text=subTitle, style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+        Spacer(Modifier.weight(1.0f))
+        if(inProgress.value == true){
+            CircularProgressIndicator()
+        }
+
+        if(state == ConnectionState.Authenticating){
+            PinEntry(Modifier.padding(10.dp),
+                pin = enteredPin,
+                onPinChanged = viewModel::updatePin,
+                onSubmit = {viewModel.submitPin()})
+        }
+        Spacer(Modifier.weight(1.0f))
+    }
 }
+
 
 
