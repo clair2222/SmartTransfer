@@ -76,24 +76,6 @@ class SenderViewModel(
     fun getWifiDirectManager() = wifiDirectManager
 
     @RequiresApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
-    fun connectToDevice(device:WifiP2pDevice){
-        _connectionState.value = ConnectionState.P2PConnecting
-        wifiDirectManager.connectToDevice(device,
-            onSuccess = {
-                viewModelScope.launch { _msg.emit("Sender : Connection request sent to ${device.deviceName}") }
-            },
-            onFailure = {reason->
-                _connectionState.value = ConnectionState.Failed
-                viewModelScope.launch {
-                    _msg.emit("Sender : Connection failed: ${reason.toWifiP2pReasonMessage()}")
-                    delay(1000)
-
-                    requestConnectionInfo()
-                }
-            })
-    }
-    @RequiresApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     fun requestConnectionInfo( ){
 
         wifiDirectManager.requestConnectionInfo { info->

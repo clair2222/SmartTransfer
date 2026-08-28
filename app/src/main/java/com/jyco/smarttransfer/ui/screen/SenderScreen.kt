@@ -10,11 +10,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +42,6 @@ import com.jyco.smarttransfer.ui.permission.RequestPermissions
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.openAppSettings
 import com.jyco.smarttransfer.viewmodel.ConnectionState
-import com.jyco.smarttransfer.viewmodel.ConnectionState.Authenticated
 import com.jyco.smarttransfer.viewmodel.SenderViewModel
 import org.koin.androidx.compose.koinViewModel
 

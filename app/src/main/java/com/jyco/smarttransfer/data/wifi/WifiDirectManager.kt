@@ -6,12 +6,10 @@ import android.content.Context
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import androidx.compose.runtime.Composable
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.hasPermissions
 
