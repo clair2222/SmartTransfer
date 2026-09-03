@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.jyco.smarttransfer.ui.screen.ContentSelectionScreen
 import com.jyco.smarttransfer.ui.screen.MainScreen
 import com.jyco.smarttransfer.ui.screen.ReceiverScreen
 import com.jyco.smarttransfer.ui.screen.SenderScreen
@@ -33,6 +34,9 @@ fun AppNavHost(){
         }
         composable(Screen.TransferResult.route) {
             TransferResultScreen(navController = navController)
+        }
+        composable(Screen.ContentSelection.route){
+            ContentSelectionScreen(navController = navController)
         }
     }
 

@@ -6,6 +6,7 @@ sealed class Screen(val route: String, val title: String) {
     data object Receiver : Screen("receiver","Receiver")
     data object Settings : Screen("settings", "Settings")
     data object TransferResult : Screen("transfer_result", "Transfer Result")
+    data object ContentSelection : Screen("content_selection", "ContentSelection")
 
 }
 
