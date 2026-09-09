@@ -6,7 +6,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jyco.smarttransfer.ui.screen.ContentSelectionScreen
 import com.jyco.smarttransfer.ui.screen.MainScreen
+import com.jyco.smarttransfer.ui.screen.MediaSelectionScreen
+import com.jyco.smarttransfer.ui.screen.PimsSelectionScreen
 import com.jyco.smarttransfer.ui.screen.ReceiverScreen
+import com.jyco.smarttransfer.ui.screen.ReceivingScreen
 import com.jyco.smarttransfer.ui.screen.SenderScreen
 import com.jyco.smarttransfer.ui.screen.SettingsScreen
 import com.jyco.smarttransfer.ui.screen.TransferResultScreen
@@ -37,6 +40,15 @@ fun AppNavHost(){
         }
         composable(Screen.ContentSelection.route){
             ContentSelectionScreen(navController = navController)
+        }
+        composable(Screen.MediaSelection.route){
+            MediaSelectionScreen(navController = navController)
+        }
+        composable(Screen.PimsSelection.route){
+            PimsSelectionScreen(navController = navController)
+        }
+        composable(Screen.Receiving.route){
+            ReceivingScreen(navController = navController)
         }
     }
 

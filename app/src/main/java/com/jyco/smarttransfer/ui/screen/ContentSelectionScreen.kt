@@ -39,6 +39,7 @@ import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.MessagePeriod
 import com.jyco.smarttransfer.data.TransferContentItem
 import com.jyco.smarttransfer.data.TransferContentType
+import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -59,17 +60,21 @@ fun ContentSelectionScreen(navController: NavController,
         Text(text = "Select content to transfer", style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(24.dp))
-        LazyColumn {
+        LazyColumn(modifier = Modifier.weight(1f)) {
             items(contents, key = {it.type}){ item->
                 ContentSelectionCard(item,
                     messageExpended = messageExtended,
                     onCheckboxChanged = {viewModel.toggleContent(item.type)},
                     onDetailsClick = {
                         when(item.type){
-                            TransferContentType.PHOTOS -> {navController.navigate("photo_selection")}
-                            TransferContentType.VIDEOS -> {navController.navigate("video_selection")}
-                            TransferContentType.CALENDAR -> {navController.navigate("calendar_selection")}
-                            TransferContentType.CONTACTS -> {navController.navigate("contact_selection")}
+                            TransferContentType.PHOTOS,
+                            TransferContentType.VIDEOS
+                                 -> {
+                                navController.navigate(Screen.MediaSelection.route) }
+
+                            TransferContentType.CONTACTS,
+                            TransferContentType.CALENDAR -> {
+                                navController.navigate(Screen.PimsSelection.route)}
                             else -> {}
                         }
                     },
@@ -129,7 +134,7 @@ fun ContentSelectionCard(item : TransferContentItem,
                 }
                 val isEnabledTextButton = !((item.type == TransferContentType.MESSAGES) && messageExpended)
 
-                TextButton(enabled = isEnabledTextButton, onClick = {}, contentPadding = PaddingValues(10.dp)) {
+                TextButton(enabled = isEnabledTextButton, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
                     Text(textAlign = TextAlign.Center,
                         text = when(item.type){
                         TransferContentType.MESSAGES ->

@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
 import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
+import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.openAppSettings
@@ -136,7 +137,7 @@ fun ReceiverScreen(navController: NavController,
                 openAppSettings(context)
         })
     } ?:
-    ReceiverContent(devices, viewModel)
+    ReceiverContent(navController, devices, viewModel)
 
 
 
@@ -144,7 +145,7 @@ fun ReceiverScreen(navController: NavController,
 
 @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
-fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
+fun ReceiverContent(navController: NavController, devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
     val pin by viewModel.authPin.collectAsState()
     val connectionState by viewModel.conncetionState.collectAsState()
     var subTitle by remember { mutableStateOf("") }
@@ -165,14 +166,16 @@ fun ReceiverContent(devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
 
         ConnectionState.SocketConnecting,
         ConnectionState.SocketConnected,
-        ConnectionState.Authenticating,
-        ConnectionState.Authenticated
+        ConnectionState.Authenticating
              -> PinContent(subTitle = when(connectionState){
                     ConnectionState.Authenticating -> "Enter below pin number on the Sender Device"
-                    ConnectionState.Authenticated -> "Authenticated"
+                    //ConnectionState.Authenticated -> "Authenticated"
                     else -> "Connecting..."
              },
             pin)
+        ConnectionState.Authenticated -> {
+            navController.navigate(Screen.Receiving.route)
+        }
         //ConnectionState.Transfer -> TODO()
         //ConnectionState.Disconnected -> TODO()
         //ConnectionState.Failed -> TODO()

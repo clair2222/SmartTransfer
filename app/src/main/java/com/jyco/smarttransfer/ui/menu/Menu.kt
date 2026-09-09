@@ -7,7 +7,9 @@ sealed class Screen(val route: String, val title: String) {
     data object Settings : Screen("settings", "Settings")
     data object TransferResult : Screen("transfer_result", "Transfer Result")
     data object ContentSelection : Screen("content_selection", "ContentSelection")
-
+    data object MediaSelection : Screen("media_selection", "Media")
+    data object PimsSelection : Screen("pims_selection", "Contact")
+    data object Receiving : Screen("receiving", "Receiving")
 }
 
 data class AppMenuItem(val route: String, val title: String)
