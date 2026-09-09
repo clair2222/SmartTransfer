@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonColors
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.jyco.smarttransfer.data.MessagePeriod
 import com.jyco.smarttransfer.data.TransferContentItem
 import com.jyco.smarttransfer.data.TransferContentType
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
@@ -58,21 +62,48 @@ fun ContentSelectionScreen(navController: NavController,
         LazyColumn {
             items(contents, key = {it.type}){ item->
                 ContentSelectionCard(item,
-                    {viewModel.toggleContent(item.type)},
-                    {})
+                    messageExpended = messageExtended,
+                    onCheckboxChanged = {viewModel.toggleContent(item.type)},
+                    onDetailsClick = {
+                        when(item.type){
+                            TransferContentType.PHOTOS -> {navController.navigate("photo_selection")}
+                            TransferContentType.VIDEOS -> {navController.navigate("video_selection")}
+                            TransferContentType.CALENDAR -> {navController.navigate("calendar_selection")}
+                            TransferContentType.CONTACTS -> {navController.navigate("contact_selection")}
+                            else -> {}
+                        }
+                    },
+                    onMessagePeriodSelected = {viewModel.updateMessagePeriod(it)}
+                )
             }
         }
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = {}, Modifier.fillMaxWidth(0.8f),
+            shape = RoundedCornerShape(2.dp)
+        ) {
+            Text(text = "Transfer", style = MaterialTheme.typography.titleLarge)
+        }
+
     }
 }
 @Composable
 fun ContentSelectionCard(item : TransferContentItem,
+                         messageExpended : Boolean,
                          onCheckboxChanged: ()->Unit,
-                         onDetailsChanged: ()->Unit
+                         onDetailsClick: ()->Unit,
+                         onMessagePeriodSelected : (MessagePeriod)->Unit
                          ){
     Card(onClick = onCheckboxChanged, modifier = Modifier
         .fillMaxWidth()
         .padding(10.dp),
         shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 6.dp
+            //pressedElevation = 20.dp
+            //focusedElevation = 20.dp
+            //hoveredElevation = 20.dp
+            //draggedElevation = 20.dp
+        ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         )
     {
@@ -80,7 +111,7 @@ fun ContentSelectionCard(item : TransferContentItem,
             .fillMaxSize()
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFFF6D365), Color(0xFFFDA085))
+                    colors = listOf(Color(0xFFFFF9F9), Color(0xFFFFFAF4))
                 )
             ),
             contentAlignment = Alignment.Center
@@ -96,7 +127,9 @@ fun ContentSelectionCard(item : TransferContentItem,
                         checked = item.selected,
                         onCheckedChange = {onCheckboxChanged()})
                 }
-                TextButton(onClick = {}, contentPadding = PaddingValues(10.dp)) {
+                val isEnabledTextButton = !((item.type == TransferContentType.MESSAGES) && messageExpended)
+
+                TextButton(enabled = isEnabledTextButton, onClick = {}, contentPadding = PaddingValues(10.dp)) {
                     Text(textAlign = TextAlign.Center,
                         text = when(item.type){
                         TransferContentType.MESSAGES ->
@@ -106,15 +139,47 @@ fun ContentSelectionCard(item : TransferContentItem,
                     }, style = MaterialTheme.typography.bodyMedium
                     )
                 }
+
+                if(!isEnabledTextButton){
+                    messageSelector(selectedPeriod = MessagePeriod.THREE_MONTHS, onPeriodSelected = onMessagePeriodSelected)
+                }
             }
         }
     }
+}
+
+@Composable
+//@Preview
+//fun messageSelectorPreview(){
+fun messageSelector(selectedPeriod : MessagePeriod, onPeriodSelected : (period : MessagePeriod)->Unit){
+    Column(horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Top) {
+        MessagePeriod.entries.forEach { period->
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                RadioButton(onClick = {onPeriodSelected(period)},
+                    selected = period == selectedPeriod,
+                    colors = RadioButtonColors(
+                        selectedColor = MaterialTheme.colorScheme.secondary,
+                        unselectedColor = MaterialTheme.colorScheme.secondaryContainer,
+                        disabledSelectedColor = MaterialTheme.colorScheme.primary,
+                        disabledUnselectedColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Text(text = period.type, color = MaterialTheme.colorScheme.secondary)
+            }
+        }
+
+    }
+
 }
 
 @Preview
 @Composable
 fun ContentSelectionPreview(){
     val contents = makeDummyTransferItems()
+    val messageExpended = true
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -127,7 +192,8 @@ fun ContentSelectionPreview(){
         Spacer(Modifier.height(24.dp))
         LazyColumn {
             items(contents, key = {it.type}){ item->
-                ContentSelectionCard(item, {}, {})
+                ContentSelectionCard(item, messageExpended, {}, {}, {})
+
             }
         }
     }

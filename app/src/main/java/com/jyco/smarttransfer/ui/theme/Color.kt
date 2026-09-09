@@ -39,5 +39,5 @@ val OnSurfaceDark = Color(0xFFE4E2E6)
 val Error = Color(0xFFF44336)
 val onError = Color(0xFDC3C30F)
 
-val CardBGStart = Color(0xFFF6D365)
-val CardBGEnd = Color(0xFFFDA085)
+val CardBGStart = Color(0xFFFFFAF4)
+val CardBGEnd = Color(0xFFFFF9F9)
