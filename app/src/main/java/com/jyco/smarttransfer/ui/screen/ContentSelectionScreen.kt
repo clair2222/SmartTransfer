@@ -1,7 +1,5 @@
 package com.jyco.smarttransfer.ui.screen
 
-
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,10 +26,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,8 @@ fun ContentSelectionScreen(navController: NavController,
 
     val contents by viewModel.contents.collectAsState()
     val messagePeriod by viewModel.messagePeriod.collectAsState()
-    val messageExtended by viewModel.messageExtended.collectAsState()
+    val messageExpended by viewModel.messageExpended.collectAsState()
+    var showDatePicker = remember { mutableStateOf(false) }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -57,43 +59,65 @@ fun ContentSelectionScreen(navController: NavController,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(text = "Select content to transfer", style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary)
+        Text(text = "Select content to transfer",
+            style = MaterialTheme.typography.headlineSmall,
+            //color = MaterialTheme.colorScheme.primary
+        )
         Spacer(Modifier.height(24.dp))
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f),
+            userScrollEnabled = true
+        ) {
             items(contents, key = {it.type}){ item->
                 ContentSelectionCard(item,
-                    messageExpended = messageExtended,
-                    onCheckboxChanged = {viewModel.toggleContent(item.type)},
+                    messagePeriod = messagePeriod,
+                    messageExpended = messageExpended,
+                    onCheckboxChanged = {viewModel.toggleContent(item.type)
+                    },
                     onDetailsClick = {
                         when(item.type){
                             TransferContentType.PHOTOS,
                             TransferContentType.VIDEOS
-                                 -> {
-                                navController.navigate(Screen.MediaSelection.route) }
+                                -> {
+                                navController.navigate(Screen.MediaSelection.route)
+                            }
 
                             TransferContentType.CONTACTS,
                             TransferContentType.CALENDAR -> {
-                                navController.navigate(Screen.PimsSelection.route)}
+                                navController.navigate(Screen.PimsSelection.route)
+                            }
+                            TransferContentType.MESSAGES -> {
+                                viewModel.updateMessageExpended(!messageExpended)
+                            }
                             else -> {}
                         }
                     },
-                    onMessagePeriodSelected = {viewModel.updateMessagePeriod(it)}
+                    onMessagePeriodSelected = {
+                        viewModel.updateMessagePeriod(it)
+                        if(it == MessagePeriod.CUSTOM && !showDatePicker.value){
+                            showDatePicker.value = true
+                        }
+                    }
                 )
             }
         }
         Spacer(Modifier.height(24.dp))
         Button(onClick = {}, Modifier.fillMaxWidth(0.8f),
-            shape = RoundedCornerShape(2.dp)
+            shape = RoundedCornerShape(12.dp),
+            enabled = contents.any { it.selected }
         ) {
             Text(text = "Transfer", style = MaterialTheme.typography.titleLarge)
         }
 
     }
 }
+
+
 @Composable
 fun ContentSelectionCard(item : TransferContentItem,
                          messageExpended : Boolean,
+                         messagePeriod: MessagePeriod,
                          onCheckboxChanged: ()->Unit,
                          onDetailsClick: ()->Unit,
                          onMessagePeriodSelected : (MessagePeriod)->Unit
@@ -132,21 +156,21 @@ fun ContentSelectionCard(item : TransferContentItem,
                         checked = item.selected,
                         onCheckedChange = {onCheckboxChanged()})
                 }
-                val isEnabledTextButton = !((item.type == TransferContentType.MESSAGES) && messageExpended)
+                val isMessageAndExpended = (item.type == TransferContentType.MESSAGES) && messageExpended
 
-                TextButton(enabled = isEnabledTextButton, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
+                TextButton(enabled = true, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
                     Text(textAlign = TextAlign.Center,
                         text = when(item.type){
                         TransferContentType.MESSAGES ->
-                            "Messages from $(messagePeriod.title}"
+                            "Messages from ${messagePeriod.type}"
                         else ->
                             "Select detail items"
                     }, style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
-                if(!isEnabledTextButton){
-                    messageSelector(selectedPeriod = MessagePeriod.THREE_MONTHS, onPeriodSelected = onMessagePeriodSelected)
+                if(isMessageAndExpended){
+                    messageSelector(selectedPeriod = messagePeriod, onPeriodSelected = onMessagePeriodSelected)
                 }
             }
         }
@@ -191,16 +215,52 @@ fun ContentSelectionPreview(){
         .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-        Text(text = "Select content to transfer", style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary)
+    ) {
+        Text(text = "Select content to transfer",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            //color = MaterialTheme.colorScheme.primary
+        )
         Spacer(Modifier.height(24.dp))
-        LazyColumn {
+        LazyColumn(modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f),
+            userScrollEnabled = true
+        ) {
             items(contents, key = {it.type}){ item->
-                ContentSelectionCard(item, messageExpended, {}, {}, {})
+                ContentSelectionCard(item,
+                    messagePeriod = MessagePeriod.THREE_MONTHS,
+                    messageExpended = messageExpended,
+                    onCheckboxChanged = {//viewModel.toggleContent(item.type)
+                         },
+                    onDetailsClick = {
+                        when(item.type){
+                            TransferContentType.PHOTOS,
+                            TransferContentType.VIDEOS
+                                -> {
+                                //navController.navigate(Screen.MediaSelection.route)
+                                    }
 
+                            TransferContentType.CONTACTS,
+                            TransferContentType.CALENDAR -> {
+                                //navController.navigate(Screen.PimsSelection.route)
+                                }
+                            else -> {}
+                        }
+                    },
+                    onMessagePeriodSelected = {//viewModel.updateMessagePeriod(it)
+                         }
+                )
             }
         }
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = {}, Modifier.fillMaxWidth(0.8f),
+            shape = RoundedCornerShape(12.dp),
+            enabled = contents.any { it.selected }
+        ) {
+            Text(text = "Transfer", style = MaterialTheme.typography.titleLarge)
+        }
+
     }
 
 }

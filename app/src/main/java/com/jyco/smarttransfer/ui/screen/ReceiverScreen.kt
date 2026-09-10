@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -198,13 +200,8 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
 //        }
 //    }
     Column(modifier = Modifier
-        .background(MaterialTheme.colorScheme.surface)
-        .border(
-            border = BorderStroke(
-                width = 2.dp, color = MaterialTheme.colorScheme.surfaceContainer
-            )
-        )
-        .fillMaxWidth(),
+        .fillMaxSize().padding(24.dp),
+        //.background(MaterialTheme.colorScheme.surface),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
 
@@ -212,7 +209,8 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
         Spacer(Modifier.weight(1.0f))
         Text(text=subTitle,
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Bold,
+            //color = MaterialTheme.colorScheme.secondary,
             textAlign = TextAlign.Center)
         Spacer(Modifier.weight(1.0f))
         LazyColumn {

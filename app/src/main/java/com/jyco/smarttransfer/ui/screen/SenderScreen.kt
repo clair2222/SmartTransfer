@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -177,8 +178,12 @@ fun SenderContent(navController: NavController,
         , horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.weight(1.0f))
-        Text(text=subTitle, style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+        Text(text=subTitle,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            //color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.weight(1.0f))
         if(inProgress.value == true){
             CircularProgressIndicator()

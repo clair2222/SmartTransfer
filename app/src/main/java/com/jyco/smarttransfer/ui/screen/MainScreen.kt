@@ -64,137 +64,66 @@ import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(navController: NavController){
-    val drawerState = rememberDrawerState(
-        initialValue = DrawerValue.Closed
-    )
-    val scope = rememberCoroutineScope()
-    var showMoreMenu by remember { mutableStateOf(false) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Text(
-                    text = "Smart Transfer",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                HorizontalDivider()
-
-                appMenuItem.forEach{
-                    NavigationDrawerItem(
-                        label = {Text(text = it.title)},
-                        selected = false,
-                        onClick = {
-                            scope.launch {drawerState.close()}
-                            navController.navigate(it.route)
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
-                }
-            }
-        }
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {Text("Smart Transfer")},
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                scope.launch {drawerState.open()}
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Open Menu"
-                            )
-                        }
-                    },
-                    actions = {
-                        Box{
-                            IconButton(
-                                onClick = {showMoreMenu = true}
-                            ){
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More options"
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showMoreMenu,
-                                onDismissRequest = {showMoreMenu = false}
-                            ) {
-                                appMenuItem.forEach{
-                                    DropdownMenuItem(
-                                        text = { Text(text = it.title, color = MaterialTheme.colorScheme.onSurface) },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            navController.navigate(it.route)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-        ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .weight(0.1f)
+                // .background(MaterialTheme.colorScheme.error)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        )
+        {
+            Text(
+                text = "Choose Transfer Mode",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
-            Column(modifier = Modifier.fillMaxSize()
-                .padding(innerPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Column(modifier = Modifier.weight(0.1f)
-                    // .background(MaterialTheme.colorScheme.error)
-                    .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                )
-                {
-                    Text(
-                        text = "Choose Transfer Mode",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+        Column(
+            modifier = Modifier
+                .weight(0.9f)
+                .fillMaxWidth()
+            //.background(MaterialTheme.colorScheme.onErrorContainer)
+            //.padding(top = 100.dp, bottom = 100.dp)
+            ,
+            verticalArrangement = Arrangement.spacedBy(
+                24.dp,
+                alignment = Alignment.CenterVertically
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MainActionCard(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .aspectRatio(1.8f),
+                title = Screen.Sender.title,
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                onClick = {
+                    navController.navigate(Screen.Sender.route)
                 }
-
-                Column(modifier = Modifier.weight(0.9f)
-                    .fillMaxWidth()
-                    //.background(MaterialTheme.colorScheme.onErrorContainer)
-                    //.padding(top = 100.dp, bottom = 100.dp)
-                    ,
-                    verticalArrangement = Arrangement.spacedBy(24.dp, alignment = Alignment.CenterVertically),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    MainActionCard(
-                        modifier = Modifier.fillMaxWidth(0.8f)
-                            .aspectRatio(1.8f)
-                        ,
-                        title = Screen.Sender.title,
-                        icon = Icons.AutoMirrored.Filled.ArrowForward,
-                        onClick = {
-                            navController.navigate(Screen.Sender.route)
-                        }
-                    )
-                    MainActionCard(
-                        modifier = Modifier.fillMaxWidth(0.8f)
-                            .aspectRatio(1.8f)
-                        ,
-                        title = Screen.Receiver.title,
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = {
-                            navController.navigate(Screen.Receiver.route)
-                        })
-                }
-            }
+            )
+            MainActionCard(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .aspectRatio(1.8f),
+                title = Screen.Receiver.title,
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                onClick = {
+                    navController.navigate(Screen.Receiver.route)
+                })
         }
     }
 }
+
 @Composable
 fun MainActionCard(modifier: Modifier = Modifier, title : String, icon: ImageVector, onClick: () -> Unit){
     Row(verticalAlignment = Alignment.CenterVertically,
@@ -227,13 +156,15 @@ fun MainActionCard(modifier: Modifier = Modifier, title : String, icon: ImageVec
 fun MainScreenPreview()
     {
         val innerPadding = 10.dp
-        Column(modifier = Modifier.fillMaxSize()
+        Column(modifier = Modifier
+            .fillMaxSize()
             .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
 
         ) {
-            Column(modifier = Modifier.weight(0.1f)
-               // .background(MaterialTheme.colorScheme.error)
+            Column(modifier = Modifier
+                .weight(0.1f)
+                // .background(MaterialTheme.colorScheme.error)
                 .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -248,7 +179,8 @@ fun MainScreenPreview()
                 )
             }
 
-            Column(modifier = Modifier.weight(0.9f)
+            Column(modifier = Modifier
+                .weight(0.9f)
                 .fillMaxWidth()
                 //.background(MaterialTheme.colorScheme.onErrorContainer)
                 //.padding(top = 100.dp, bottom = 100.dp)
@@ -256,7 +188,8 @@ fun MainScreenPreview()
                 verticalArrangement = Arrangement.spacedBy(24.dp, alignment = Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                MainActionCard(modifier = Modifier.fillMaxWidth(0.8f)
+                MainActionCard(modifier = Modifier
+                    .fillMaxWidth(0.8f)
                     .aspectRatio(1.8f)
                     ,
                     title = Screen.Sender.title,
@@ -265,7 +198,8 @@ fun MainScreenPreview()
                         //navController.navigate(Screen.Sender.route)
                     }
                 )
-                MainActionCard(modifier = Modifier.fillMaxWidth(0.8f)
+                MainActionCard(modifier = Modifier
+                    .fillMaxWidth(0.8f)
                     .aspectRatio(1.8f)
                     ,
                     title = Screen.Receiver.title,

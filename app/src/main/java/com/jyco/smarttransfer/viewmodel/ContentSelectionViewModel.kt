@@ -23,7 +23,10 @@ class ContentSelectionViewModel : ViewModel() {
     val messagePeriod = _messagePeriod.asStateFlow()
 
     private val _messageExpended = MutableStateFlow(false)
-    val messageExtended = _messageExpended.asStateFlow()
+    val messageExpended = _messageExpended.asStateFlow()
+
+    private val _customMessageDate = MutableStateFlow(Pair<Long?, Long?>(null, null))
+    val customMessageStartDate = _customMessageDate.asStateFlow()
 
     fun toggleContent(type : TransferContentType){
         _contents.update { items->
@@ -41,7 +44,11 @@ class ContentSelectionViewModel : ViewModel() {
     fun updateMessagePeriod(period : MessagePeriod){
         _messagePeriod.value = period
     }
-    fun updateMessageExtended(extended : Boolean){
+    fun updateMessageExpended(extended : Boolean){
         _messageExpended.value = extended
     }
+    fun updateCustomMessageDate(date : Pair<Long?, Long?>){
+        _customMessageDate.value = date
+    }
+
 }
