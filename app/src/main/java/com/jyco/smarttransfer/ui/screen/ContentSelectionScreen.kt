@@ -1,5 +1,6 @@
 package com.jyco.smarttransfer.ui.screen
 
+import android.graphics.drawable.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,15 +15,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerFormatter
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DateRangePickerDefaults
+import androidx.compose.material3.DateRangePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonColors
+import androidx.compose.material3.SegmentedButtonDefaults.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,7 +56,11 @@ import com.jyco.smarttransfer.data.TransferContentItem
 import com.jyco.smarttransfer.data.TransferContentType
 import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
+import okhttp3.internal.format
 import org.koin.androidx.compose.koinViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ContentSelectionScreen(navController: NavController,
@@ -51,7 +69,16 @@ fun ContentSelectionScreen(navController: NavController,
     val contents by viewModel.contents.collectAsState()
     val messagePeriod by viewModel.messagePeriod.collectAsState()
     val messageExpended by viewModel.messageExpended.collectAsState()
+    val customMessageDate by viewModel.customMessageDate.collectAsState()
+
     var showDatePicker = remember { mutableStateOf(false) }
+
+    if(showDatePicker.value){
+        CustomDatePickerDialog(onDismiss = {showDatePicker.value = false},
+            onConfirm = {start, end ->
+                viewModel.updateCustomMessageDate(Pair(start, end))},
+            customMessageDate = customMessageDate)
+    }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -98,7 +125,8 @@ fun ContentSelectionScreen(navController: NavController,
                         if(it == MessagePeriod.CUSTOM && !showDatePicker.value){
                             showDatePicker.value = true
                         }
-                    }
+                    },
+                    customMessageDate = customMessageDate
                 )
             }
         }
@@ -120,7 +148,8 @@ fun ContentSelectionCard(item : TransferContentItem,
                          messagePeriod: MessagePeriod,
                          onCheckboxChanged: ()->Unit,
                          onDetailsClick: ()->Unit,
-                         onMessagePeriodSelected : (MessagePeriod)->Unit
+                         onMessagePeriodSelected : (MessagePeriod)->Unit,
+                         customMessageDate : Pair<Long?, Long?>
                          ){
     Card(onClick = onCheckboxChanged, modifier = Modifier
         .fillMaxWidth()
@@ -161,8 +190,14 @@ fun ContentSelectionCard(item : TransferContentItem,
                 TextButton(enabled = true, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
                     Text(textAlign = TextAlign.Center,
                         text = when(item.type){
-                        TransferContentType.MESSAGES ->
-                            "Messages from ${messagePeriod.type}"
+                        TransferContentType.MESSAGES -> {
+                            if(messagePeriod.type == MessagePeriod.CUSTOM.type){
+                                "Messages from ${customMessageDate.first} to ${customMessageDate.second}"
+                            }
+                            else{
+                                "Messages from ${messagePeriod.type}"
+                            }
+                        }
                         else ->
                             "Select detail items"
                     }, style = MaterialTheme.typography.bodyMedium
@@ -209,7 +244,18 @@ fun messageSelector(selectedPeriod : MessagePeriod, onPeriodSelected : (period :
 fun ContentSelectionPreview(){
     val contents = makeDummyTransferItems()
     val messageExpended = true
+    val customMessageDate = Pair(null, null)
 
+    var showDatePicker = remember { mutableStateOf(false) }
+
+    if(showDatePicker.value){
+        CustomDatePickerDialog(onDismiss = {showDatePicker.value = false},
+            onConfirm = {start, end ->
+                //viewModel.updateCustomMessageDate(Pair(start, end))
+                        },
+            customMessageDate
+            )
+    }
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(20.dp),
@@ -249,7 +295,8 @@ fun ContentSelectionPreview(){
                         }
                     },
                     onMessagePeriodSelected = {//viewModel.updateMessagePeriod(it)
-                         }
+                         },
+                    customMessageDate = customMessageDate
                 )
             }
         }
@@ -271,3 +318,96 @@ fun makeDummyTransferItems() = TransferContentType.entries.map{ item->
     TransferContentItem(item, false, "Test detail set...")
 }
 fun makeDummyTransferContentItem() = TransferContentItem(type = TransferContentType.MESSAGES, detail = "Messages from 6 months ago")
+
+@OptIn(ExperimentalMaterial3Api::class)
+//@Preview
+@Composable
+fun CustomDatePickerDialog(onDismiss : ()-> Unit,
+                           onConfirm : (Long?, Long?)-> Unit,
+                           customMessageDate : Pair<Long?, Long?>,
+                           //customStartDate : Long?,
+                           //customEndDate : Long?,
+                           ){
+    val formatter = remember { SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()) }
+    val customStartDate = customMessageDate.first
+    val customEndDate = customMessageDate.second
+    val dateRangePickerState = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = customStartDate,
+        initialSelectedEndDateMillis = customEndDate,
+    )
+    val headlineText = {
+        val start = dateRangePickerState.selectedStartDateMillis
+        val end = dateRangePickerState.selectedEndDateMillis
+        when {
+            (start != null) && (end != null) -> {
+                "${formatter.format(start)} - ${formatter.format(end)}"
+            }
+            (start != null) -> {
+                "${formatter.format(start)} - End"
+            }
+            (end != null) -> {
+                "Start - ${formatter.format(end)}}"
+            }
+            else -> {
+                "Start - End"
+            }
+        }
+    }
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick =
+                {onConfirm(dateRangePickerState.selectedStartDateMillis,
+                    dateRangePickerState.selectedEndDateMillis)}) {
+                Text(text = "Apply")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel")
+            }
+        },
+        shape = DatePickerDefaults.shape,
+        tonalElevation = DatePickerDefaults.TonalElevation,
+        colors = DatePickerDefaults.colors(),
+    ) {
+        DateRangePicker(
+            state = dateRangePickerState,
+            modifier = Modifier.fillMaxSize(),
+            title = {
+                Text(text = "Select dates for retrieving messages",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(6.dp)
+                )
+
+            },
+            headline = {
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ){
+                    Text(text = headlineText(),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(10.dp))
+                    Spacer(Modifier.weight(1f))
+
+                    IconButton(onClick = {},
+                        ) {
+                        Icon(imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit date")
+                    }
+                }
+
+
+            },
+            showModeToggle = false,
+            colors = DatePickerDefaults.colors()
+        )
+    }
+}
