@@ -27,6 +27,7 @@ import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DateRangePickerDefaults
 import androidx.compose.material3.DateRangePickerState
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +62,7 @@ import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun ContentSelectionScreen(navController: NavController,
@@ -76,7 +78,9 @@ fun ContentSelectionScreen(navController: NavController,
     if(showDatePicker.value){
         CustomDatePickerDialog(onDismiss = {showDatePicker.value = false},
             onConfirm = {start, end ->
-                viewModel.updateCustomMessageDate(Pair(start, end))},
+                viewModel.updateCustomMessageDate(Pair(start, end))
+                showDatePicker.value = false
+            },
             customMessageDate = customMessageDate)
     }
 
@@ -192,7 +196,15 @@ fun ContentSelectionCard(item : TransferContentItem,
                         text = when(item.type){
                         TransferContentType.MESSAGES -> {
                             if(messagePeriod.type == MessagePeriod.CUSTOM.type){
-                                "Messages from ${customMessageDate.first} to ${customMessageDate.second}"
+                                val formatter = SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                                val start = customMessageDate.first?.let{
+                                    formatter.format(Date(customMessageDate.first!!))
+                                } ?: {"Start"}
+                                val end = customMessageDate.second?.let{
+                                    formatter.format(Date(customMessageDate.second!!))
+                                } ?: {"End"}
+
+                                "Messages from $start to $end"
                             }
                             else{
                                 "Messages from ${messagePeriod.type}"
@@ -325,10 +337,8 @@ fun makeDummyTransferContentItem() = TransferContentItem(type = TransferContentT
 fun CustomDatePickerDialog(onDismiss : ()-> Unit,
                            onConfirm : (Long?, Long?)-> Unit,
                            customMessageDate : Pair<Long?, Long?>,
-                           //customStartDate : Long?,
-                           //customEndDate : Long?,
                            ){
-    val formatter = remember { SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()) }
+    val formatter = remember { SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") } }
     val customStartDate = customMessageDate.first
     val customEndDate = customMessageDate.second
     val dateRangePickerState = rememberDateRangePickerState(
@@ -355,7 +365,9 @@ fun CustomDatePickerDialog(onDismiss : ()-> Unit,
     }
 
     DatePickerDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            dateRangePickerState.displayMode = DisplayMode.Picker
+            onDismiss},
         confirmButton = {
             TextButton(onClick =
                 {onConfirm(dateRangePickerState.selectedStartDateMillis,
@@ -376,14 +388,14 @@ fun CustomDatePickerDialog(onDismiss : ()-> Unit,
             state = dateRangePickerState,
             modifier = Modifier.fillMaxSize(),
             title = {
-                Text(text = "Select dates for retrieving messages",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(6.dp)
-                )
-
+//                Text(text = "Select dates for retrieving messages",
+//                    textAlign = TextAlign.Center,
+//                    style = MaterialTheme.typography.titleMedium,
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(6.dp)
+//                )
+//
             },
             headline = {
                 Row(modifier = Modifier
@@ -397,7 +409,12 @@ fun CustomDatePickerDialog(onDismiss : ()-> Unit,
                         modifier = Modifier.padding(10.dp))
                     Spacer(Modifier.weight(1f))
 
-                    IconButton(onClick = {},
+                    IconButton(onClick = {
+                        if(dateRangePickerState.displayMode == DisplayMode.Picker)
+                            dateRangePickerState.displayMode = DisplayMode.Input
+//                        else
+//                            dateRangePickerState.displayMode = DisplayMode.Picker
+                    },
                         ) {
                         Icon(imageVector = Icons.Default.Edit,
                             contentDescription = "Edit date")
