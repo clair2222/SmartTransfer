@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -38,6 +39,7 @@ import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
 import com.jyco.smarttransfer.ui.common.getPermissionErrorMessage
+import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.ui.permission.RequestPermissions
 import com.jyco.smarttransfer.ui.permission.getWifiPermissions
 import com.jyco.smarttransfer.ui.permission.openAppSettings
@@ -123,13 +125,14 @@ fun SenderScreen(navController: NavController,
                 shouldCheckOnResume = true
                 openAppSettings(context)
             })
-    } ?: SenderContent(devices, viewModel)
+    } ?: SenderContent(navController, devices, viewModel)
 }
 
 
 @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
-fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
+fun SenderContent(navController: NavController,
+                  devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
     val state by viewModel.connectionState.collectAsState()
     val enteredPin by viewModel.enteredPin.collectAsState()
     var subTitle = "This is Sender Screen"
@@ -159,6 +162,7 @@ fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
         ConnectionState.Authenticated -> {
             subTitle = "Authentication Success"
             inProgress.value = false
+            navController.navigate(Screen.ContentSelection.route)
         }
         ConnectionState.Failed -> {
             subTitle = "Connection Failed."
@@ -174,8 +178,12 @@ fun SenderContent(devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
         , horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.weight(1.0f))
-        Text(text=subTitle, style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+        Text(text=subTitle,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            //color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.weight(1.0f))
         if(inProgress.value == true){
             CircularProgressIndicator()
