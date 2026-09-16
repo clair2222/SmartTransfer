@@ -1,10 +1,9 @@
 package com.jyco.smarttransfer.viewmodel
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
-import com.jyco.smarttransfer.data.MessagePeriod
-import com.jyco.smarttransfer.data.TransferContentItem
-import com.jyco.smarttransfer.data.TransferContentType
+import com.jyco.smarttransfer.data.transfer.MessagePeriod
+import com.jyco.smarttransfer.data.transfer.TransferContentItem
+import com.jyco.smarttransfer.data.transfer.TransferContentType
 import kotlinx.coroutines.flow.MutableStateFlow
 
 import kotlinx.coroutines.flow.asStateFlow

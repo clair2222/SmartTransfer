@@ -1,6 +1,5 @@
 package com.jyco.smarttransfer.ui.screen
 
-import android.graphics.drawable.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,10 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DateRangePickerDefaults
-import androidx.compose.material3.DateRangePickerState
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonColors
-import androidx.compose.material3.SegmentedButtonDefaults.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
@@ -52,12 +47,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.jyco.smarttransfer.data.MessagePeriod
-import com.jyco.smarttransfer.data.TransferContentItem
-import com.jyco.smarttransfer.data.TransferContentType
+import com.jyco.smarttransfer.data.transfer.MessagePeriod
+import com.jyco.smarttransfer.data.transfer.TransferContentItem
+import com.jyco.smarttransfer.data.transfer.TransferContentType
 import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
-import okhttp3.internal.format
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -329,7 +323,6 @@ fun ContentSelectionPreview(){
 fun makeDummyTransferItems() = TransferContentType.entries.map{ item->
     TransferContentItem(item, false, "Test detail set...")
 }
-fun makeDummyTransferContentItem() = TransferContentItem(type = TransferContentType.MESSAGES, detail = "Messages from 6 months ago")
 
 @OptIn(ExperimentalMaterial3Api::class)
 //@Preview

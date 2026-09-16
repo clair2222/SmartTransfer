@@ -1,4 +1,4 @@
-package com.jyco.smarttransfer.data
+package com.jyco.smarttransfer.data.transfer
 
 enum class TransferContentType(val type :String){
     PHOTOS("Photos"),
@@ -14,5 +14,5 @@ enum class MessagePeriod(val type : String){
     CUSTOM("Custom")
 }
 data class TransferContentItem(val type : TransferContentType, val selected : Boolean = false,
-                              val detail:String? = null)
+                               val detail:String? = null)
 
