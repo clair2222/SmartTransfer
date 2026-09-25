@@ -1,5 +1,7 @@
 package com.jyco.smarttransfer.di
 
+import com.jyco.smarttransfer.data.contact.ContactRepository
+import com.jyco.smarttransfer.data.message.MessageRepository
 import com.jyco.smarttransfer.data.socket.SocketManager
 import com.jyco.smarttransfer.data.wifi.WifiDirectManager
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
@@ -12,6 +14,12 @@ val appModule = module {
     single{
         WifiDirectManager(context = get())
     }
+    single {
+        ContactRepository(context = get())
+    }
+    single{
+        MessageRepository(context = get())
+    }
     factory{
         SocketManager()
     }
@@ -22,6 +30,6 @@ val appModule = module {
         ReceiverViewModel(wifiDirectManager = get(), socketManager = get())
     }
     viewModel {
-        ContentSelectionViewModel()
+        ContentSelectionViewModel(contactRepository = get(), messageRepository = get())
     }
 }
