@@ -13,7 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
@@ -56,6 +55,12 @@ fun getWifiPermissions():Array<String>{
         else
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
 
+}
+fun getContactPermissions():Array<String>{
+    return arrayOf(Manifest.permission.READ_CONTACTS)
+}
+fun getMessagePermissions() : Array<String>{
+    return arrayOf(Manifest.permission.READ_SMS)
 }
 
 fun openAppSettings(context: Context){

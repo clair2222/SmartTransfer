@@ -1,5 +1,8 @@
 package com.jyco.smarttransfer.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,9 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.jyco.smarttransfer.data.transfer.ContentSelectionItem
+import com.jyco.smarttransfer.data.transfer.ContentType
 import com.jyco.smarttransfer.data.transfer.MessagePeriod
-import com.jyco.smarttransfer.data.transfer.TransferContentItem
-import com.jyco.smarttransfer.data.transfer.TransferContentType
 import com.jyco.smarttransfer.ui.menu.Screen
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -67,7 +70,15 @@ fun ContentSelectionScreen(navController: NavController,
     val messageExpended by viewModel.messageExpended.collectAsState()
     val customMessageDate by viewModel.customMessageDate.collectAsState()
 
-    var showDatePicker = remember { mutableStateOf(false) }
+    val showDatePicker = remember { mutableStateOf(false) }
+
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()) {uris->
+        viewModel.updatePhotoUris(uris)}
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()) {uris->
+        viewModel.updateVideoUris(uris)
+    }
 
     if(showDatePicker.value){
         CustomDatePickerDialog(onDismiss = {showDatePicker.value = false},
@@ -102,20 +113,20 @@ fun ContentSelectionScreen(navController: NavController,
                     },
                     onDetailsClick = {
                         when(item.type){
-                            TransferContentType.PHOTOS,
-                            TransferContentType.VIDEOS
-                                -> {
-                                navController.navigate(Screen.MediaSelection.route)
+                            ContentType.PHOTOS->{
+                                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                            ContentType.VIDEOS-> {
+                                videoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                             }
 
-                            TransferContentType.CONTACTS,
-                            TransferContentType.CALENDAR -> {
+                            ContentType.CONTACTS,
+                            ContentType.CALENDAR -> {
                                 navController.navigate(Screen.PimsSelection.route)
                             }
-                            TransferContentType.MESSAGES -> {
+                            ContentType.MESSAGES -> {
                                 viewModel.updateMessageExpended(!messageExpended)
                             }
-                            else -> {}
                         }
                     },
                     onMessagePeriodSelected = {
@@ -139,9 +150,8 @@ fun ContentSelectionScreen(navController: NavController,
     }
 }
 
-
 @Composable
-fun ContentSelectionCard(item : TransferContentItem,
+fun ContentSelectionCard(item : ContentSelectionItem,
                          messageExpended : Boolean,
                          messagePeriod: MessagePeriod,
                          onCheckboxChanged: ()->Unit,
@@ -183,20 +193,20 @@ fun ContentSelectionCard(item : TransferContentItem,
                         checked = item.selected,
                         onCheckedChange = {onCheckboxChanged()})
                 }
-                val isMessageAndExpended = (item.type == TransferContentType.MESSAGES) && messageExpended
+                val isMessageAndExpended = (item.type == ContentType.MESSAGES) && messageExpended
 
                 TextButton(enabled = true, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
                     Text(textAlign = TextAlign.Center,
                         text = when(item.type){
-                        TransferContentType.MESSAGES -> {
+                        ContentType.MESSAGES -> {
                             if(messagePeriod.type == MessagePeriod.CUSTOM.type){
                                 val formatter = SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
                                 val start = customMessageDate.first?.let{
                                     formatter.format(Date(customMessageDate.first!!))
-                                } ?: {"Start"}
+                                } ?: "START"
                                 val end = customMessageDate.second?.let{
                                     formatter.format(Date(customMessageDate.second!!))
-                                } ?: {"End"}
+                                } ?: "END"
 
                                 "Messages from $start to $end"
                             }
@@ -211,7 +221,7 @@ fun ContentSelectionCard(item : TransferContentItem,
                 }
 
                 if(isMessageAndExpended){
-                    messageSelector(selectedPeriod = messagePeriod, onPeriodSelected = onMessagePeriodSelected)
+                    MessageSelector(selectedPeriod = messagePeriod, onPeriodSelected = onMessagePeriodSelected)
                 }
             }
         }
@@ -221,7 +231,7 @@ fun ContentSelectionCard(item : TransferContentItem,
 @Composable
 //@Preview
 //fun messageSelectorPreview(){
-fun messageSelector(selectedPeriod : MessagePeriod, onPeriodSelected : (period : MessagePeriod)->Unit){
+fun MessageSelector(selectedPeriod : MessagePeriod, onPeriodSelected : (period : MessagePeriod)->Unit){
     Column(horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Top) {
         MessagePeriod.entries.forEach { period->
@@ -252,7 +262,7 @@ fun ContentSelectionPreview(){
     val messageExpended = true
     val customMessageDate = Pair(null, null)
 
-    var showDatePicker = remember { mutableStateOf(false) }
+    val showDatePicker = remember { mutableStateOf(false) }
 
     if(showDatePicker.value){
         CustomDatePickerDialog(onDismiss = {showDatePicker.value = false},
@@ -287,14 +297,16 @@ fun ContentSelectionPreview(){
                          },
                     onDetailsClick = {
                         when(item.type){
-                            TransferContentType.PHOTOS,
-                            TransferContentType.VIDEOS
-                                -> {
+                            ContentType.PHOTOS->{
+
+                            }
+
+                            ContentType.VIDEOS-> {
                                 //navController.navigate(Screen.MediaSelection.route)
                                     }
 
-                            TransferContentType.CONTACTS,
-                            TransferContentType.CALENDAR -> {
+                            ContentType.CONTACTS,
+                            ContentType.CALENDAR -> {
                                 //navController.navigate(Screen.PimsSelection.route)
                                 }
                             else -> {}
@@ -320,8 +332,8 @@ fun ContentSelectionPreview(){
 
 
 
-fun makeDummyTransferItems() = TransferContentType.entries.map{ item->
-    TransferContentItem(item, false, "Test detail set...")
+fun makeDummyTransferItems() = ContentType.entries.map{ item->
+    ContentSelectionItem(item, false, "Test detail set...")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
