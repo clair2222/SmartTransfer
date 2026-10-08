@@ -1,22 +1,17 @@
 package com.jyco.smarttransfer.viewmodel
 
 import android.net.Uri
-import android.provider.CalendarContract.Calendars
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.jyco.smarttransfer.data.contact.ContactData
 import com.jyco.smarttransfer.data.contact.ContactRepository
-import com.jyco.smarttransfer.data.message.MessageData
 import com.jyco.smarttransfer.data.message.MessageRepository
-import com.jyco.smarttransfer.data.transfer.MessagePeriod
 import com.jyco.smarttransfer.data.transfer.ContentSelectionItem
 import com.jyco.smarttransfer.data.transfer.ContentType
+import com.jyco.smarttransfer.data.transfer.MessagePeriod
 import com.jyco.smarttransfer.data.transfer.TransferItem
 import com.jyco.smarttransfer.data.transfer.TransferSelectionContent
 import kotlinx.coroutines.flow.MutableStateFlow
-
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch

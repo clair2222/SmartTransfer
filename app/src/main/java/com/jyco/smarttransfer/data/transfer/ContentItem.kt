@@ -21,10 +21,6 @@ enum class MessagePeriod(val type : String){
 data class ContentSelectionItem(val type : ContentType, val selected : Boolean = false,
                                val detail:String? = null)
 
-
-data class PhotoUris(val uris : List<Uri>)
-data class VideoUris(val uris : List<Uri>)
-
 enum class TransferStatusType {
     idle,
     transferring,

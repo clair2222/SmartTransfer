@@ -2,7 +2,9 @@ package com.jyco.smarttransfer.ui.permission
 
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -43,6 +45,9 @@ fun RequestPermissions(permissions: Array<String>, requestKey : Int,
         if(hasAlreadyGranted) onGranted()
         else {
             Log.d(TAG, "launch permission request")
+            permissions.forEach { permission->
+                markPermissionRequested(context, permission)
+            }
             launcher.launch(permissions)
         }
 
@@ -59,8 +64,12 @@ fun getWifiPermissions():Array<String>{
 fun getContactPermissions():Array<String>{
     return arrayOf(Manifest.permission.READ_CONTACTS)
 }
+
 fun getMessagePermissions() : Array<String>{
     return arrayOf(Manifest.permission.READ_SMS)
+}
+fun getCalendarPermissions() : Array<String>{
+    return arrayOf(Manifest.permission.READ_CALENDAR)
 }
 
 fun openAppSettings(context: Context){
@@ -78,5 +87,62 @@ fun hasPermissions(context: Context, permissions: Array<String>): Boolean{
         granted
     }
 }
+fun Context.findActivity(): Activity?{
+    var context = this
+
+    while(context is ContextWrapper){
+        if(context is Activity) return context
+        else context = context.baseContext
+    }
+    return null
+}
+enum class PermissionStatus{
+    GRANTED,
+    CAN_POPUP,
+    GO_SETTING
+}
+fun isPermissionPopupNeeded(context: Context, permissions : Array<String>) : PermissionStatus{
+    val activity = context.findActivity()
+    val status = permissions.map {permission->
+        val needRationale = activity?.shouldShowRequestPermissionRationale(permission) ?: false
+        val hasPermission = hasPermissions(context, arrayOf(permission))
+        val requestedBefore = getPermissionRequestedBefore(context, permission)
+
+        when{
+            (hasPermission) ->{
+                PermissionStatus.GRANTED
+            } // granted
+            (needRationale) ->{
+                PermissionStatus.CAN_POPUP
+            } // don't allow just only once
+            (requestedBefore) ->{
+                PermissionStatus.GO_SETTING
+            } // don't allow repeatedly
+            else -> {
+                PermissionStatus.CAN_POPUP
+            } // for the first time
+        }
+    }
+
+    return when{
+        status.contains(PermissionStatus.GO_SETTING) -> PermissionStatus.GO_SETTING
+        status.contains(PermissionStatus.CAN_POPUP) -> PermissionStatus.CAN_POPUP
+        else -> {PermissionStatus.GRANTED}
+    }
+
+}
+fun markPermissionRequested(context: Context, permission : String){
+    context.getSharedPreferences(permission, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(permission, true)
+        .apply()
+}
+fun getPermissionRequestedBefore(context: Context, permission : String) : Boolean{
+    val prefs = context.getSharedPreferences(permission, Context.MODE_PRIVATE)
+    return prefs.getBoolean(permission, false)
+}
+
+
+
 
 

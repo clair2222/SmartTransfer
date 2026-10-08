@@ -1,5 +1,7 @@
 package com.jyco.smarttransfer.ui.screen
 
+import android.content.Context
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,23 +38,36 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.transfer.ContentSelectionItem
 import com.jyco.smarttransfer.data.transfer.ContentType
 import com.jyco.smarttransfer.data.transfer.MessagePeriod
-import com.jyco.smarttransfer.ui.menu.Screen
+import com.jyco.smarttransfer.ui.permission.PermissionStatus
+import com.jyco.smarttransfer.ui.permission.RequestPermissions
+import com.jyco.smarttransfer.ui.permission.getCalendarPermissions
+import com.jyco.smarttransfer.ui.permission.getContactPermissions
+import com.jyco.smarttransfer.ui.permission.getMessagePermissions
+import com.jyco.smarttransfer.ui.permission.hasPermissions
+import com.jyco.smarttransfer.ui.permission.isPermissionPopupNeeded
+import com.jyco.smarttransfer.ui.permission.openAppSettings
 import com.jyco.smarttransfer.viewmodel.ContentSelectionViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -65,12 +79,28 @@ import java.util.TimeZone
 fun ContentSelectionScreen(navController: NavController,
                            viewModel: ContentSelectionViewModel = koinViewModel()){
 
+    val TAG = "ContentSelectionScreen"
+
     val contents by viewModel.contents.collectAsState()
     val messagePeriod by viewModel.messagePeriod.collectAsState()
     val messageExpended by viewModel.messageExpended.collectAsState()
     val customMessageDate by viewModel.customMessageDate.collectAsState()
 
     val showDatePicker = remember { mutableStateOf(false) }
+    var requestPermissionState by remember{mutableStateOf<ContentType?>(null)}
+    var grantedPermissions by remember {
+        mutableStateOf<Map<ContentType, Boolean>>(emptyMap())
+    }
+    fun refreshPermissions(context: Context){
+        grantedPermissions = mapOf(
+            ContentType.CONTACTS to hasPermissions(context, getContactPermissions()),
+            ContentType.MESSAGES to hasPermissions(context, getMessagePermissions()),
+            ContentType.CALENDAR to hasPermissions(context, getCalendarPermissions())
+        )
+    }
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia()) {uris->
@@ -78,6 +108,43 @@ fun ContentSelectionScreen(navController: NavController,
     val videoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia()) {uris->
         viewModel.updateVideoUris(uris)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver{_, event->
+            if((event == Lifecycle.Event.ON_RESUME) ){
+                refreshPermissions(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    requestPermissionState?.let { type->
+        val permissions = when (type) {
+            ContentType.CONTACTS -> {
+                getContactPermissions()
+            }
+            ContentType.MESSAGES -> {
+                getMessagePermissions()
+            }
+            ContentType.CALENDAR -> {
+                getCalendarPermissions()
+            }
+            else ->emptyArray()
+        }
+
+        RequestPermissions(permissions, type.ordinal,
+            onGranted = {
+                viewModel.toggleContent(type)
+                requestPermissionState = null
+            },
+            onDenied = {
+                Log.e(TAG, "Permission denied : ${type} :  ${type.ordinal}")
+                requestPermissionState = null
+            })
     }
 
     if(showDatePicker.value){
@@ -106,24 +173,55 @@ fun ContentSelectionScreen(navController: NavController,
             userScrollEnabled = true
         ) {
             items(contents, key = {it.type}){ item->
-                ContentSelectionCard(item,
+                ContentSelectionCard(
+                    item,
                     messagePeriod = messagePeriod,
                     messageExpended = messageExpended,
-                    onCheckboxChanged = {viewModel.toggleContent(item.type)
-                    },
-                    onDetailsClick = {
-                        when(item.type){
-                            ContentType.PHOTOS->{
-                                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            }
-                            ContentType.VIDEOS-> {
-                                videoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                    onCheckboxChanged = {
+                        //if(item.selected){
+                        when (item.type) {
+                            ContentType.VIDEOS,
+                            ContentType.PHOTOS -> {
+                                viewModel.toggleContent(item.type)
                             }
 
                             ContentType.CONTACTS,
-                            ContentType.CALENDAR -> {
-                                navController.navigate(Screen.PimsSelection.route)
+                            ContentType.MESSAGES,
+                            ContentType.CALENDAR-> {
+                                val permissions = when(item.type){
+                                    ContentType.CONTACTS -> getContactPermissions()
+                                    ContentType.MESSAGES -> getMessagePermissions()
+                                    ContentType.CALENDAR -> getCalendarPermissions()
+                                    else -> {emptyArray<String>()}
+                                }
+                                val status = isPermissionPopupNeeded(context, permissions)
+                                when (status) {
+                                    PermissionStatus.GRANTED -> {
+                                        viewModel.toggleContent(item.type)
+                                    }
+                                    PermissionStatus.CAN_POPUP -> {
+                                        //snack bar error
+                                        requestPermissionState = item.type
+                                    }
+                                    PermissionStatus.GO_SETTING -> {
+                                        openAppSettings(context)
+                                    }
+                                }
                             }
+                        }
+                    },
+                    onDetailsClick = {
+                        when (item.type) {
+                            ContentType.PHOTOS -> {
+                                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+
+                            ContentType.VIDEOS -> {
+                                videoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                            }
+
+                            ContentType.CONTACTS -> {}
+                            ContentType.CALENDAR -> {}
                             ContentType.MESSAGES -> {
                                 viewModel.updateMessageExpended(!messageExpended)
                             }
@@ -131,16 +229,42 @@ fun ContentSelectionScreen(navController: NavController,
                     },
                     onMessagePeriodSelected = {
                         viewModel.updateMessagePeriod(it)
-                        if(it == MessagePeriod.CUSTOM && !showDatePicker.value){
+                        if (it == MessagePeriod.CUSTOM && !showDatePicker.value) {
                             showDatePicker.value = true
                         }
                     },
-                    customMessageDate = customMessageDate
+                    customMessageDate = customMessageDate,
+                    onPermissionRetry = {
+                        val permissions = when(item.type){
+                            ContentType.CONTACTS -> getContactPermissions()
+                            ContentType.MESSAGES -> getMessagePermissions()
+                            ContentType.CALENDAR -> getCalendarPermissions()
+                            else -> {emptyArray<String>()}
+                        }
+                        val status = isPermissionPopupNeeded(context, permissions)
+                        when (status) {
+                            PermissionStatus.GRANTED -> {
+                                //viewModel.toggleContent(item.type)
+                            }
+                            PermissionStatus.CAN_POPUP -> {
+                                //snack bar error
+                                requestPermissionState = item.type
+                            }
+                            PermissionStatus.GO_SETTING -> {
+                                openAppSettings(context)
+                            }
+                        }
+                    },
+                    context = context,
+                    grantedPermissions = grantedPermissions
                 )
             }
         }
         Spacer(Modifier.height(24.dp))
-        Button(onClick = {}, Modifier.fillMaxWidth(0.8f),
+        Button(onClick = {
+            viewModel.loadContacts()
+            viewModel.loadMessages()
+        }, Modifier.fillMaxWidth(0.8f),
             shape = RoundedCornerShape(12.dp),
             enabled = contents.any { it.selected }
         ) {
@@ -157,7 +281,10 @@ fun ContentSelectionCard(item : ContentSelectionItem,
                          onCheckboxChanged: ()->Unit,
                          onDetailsClick: ()->Unit,
                          onMessagePeriodSelected : (MessagePeriod)->Unit,
-                         customMessageDate : Pair<Long?, Long?>
+                         customMessageDate : Pair<Long?, Long?>,
+                         onPermissionRetry:()->Unit,
+                         context : Context,
+                         grantedPermissions : Map<ContentType, Boolean>
                          ){
     Card(onClick = onCheckboxChanged, modifier = Modifier
         .fillMaxWidth()
@@ -194,34 +321,49 @@ fun ContentSelectionCard(item : ContentSelectionItem,
                         onCheckedChange = {onCheckboxChanged()})
                 }
                 val isMessageAndExpended = (item.type == ContentType.MESSAGES) && messageExpended
+                var isDetailedMessageEnabled : Boolean = grantedPermissions[item.type] ?:
+                (item.type == ContentType.PHOTOS || item.type == ContentType.VIDEOS)
 
-                TextButton(enabled = true, onClick = onDetailsClick, contentPadding = PaddingValues(10.dp)) {
-                    Text(textAlign = TextAlign.Center,
-                        text = when(item.type){
-                        ContentType.MESSAGES -> {
-                            if(messagePeriod.type == MessagePeriod.CUSTOM.type){
-                                val formatter = SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
-                                val start = customMessageDate.first?.let{
-                                    formatter.format(Date(customMessageDate.first!!))
-                                } ?: "START"
-                                val end = customMessageDate.second?.let{
-                                    formatter.format(Date(customMessageDate.second!!))
-                                } ?: "END"
+                Column(verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if(isDetailedMessageEnabled){
+                        TextButton(enabled = isDetailedMessageEnabled, onClick = onDetailsClick) {
+                            Text(textAlign = TextAlign.Center,
+                                text = when(item.type){
+                                    ContentType.MESSAGES -> {
+                                        if(messagePeriod.type == MessagePeriod.CUSTOM.type){
+                                            val formatter = SimpleDateFormat(("MMM d, yyyy"), Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                                            val start = customMessageDate.first?.let{
+                                                formatter.format(Date(customMessageDate.first!!))
+                                            } ?: "START"
+                                            val end = customMessageDate.second?.let{
+                                                formatter.format(Date(customMessageDate.second!!))
+                                            } ?: "END"
 
-                                "Messages from $start to $end"
-                            }
-                            else{
-                                "Messages from ${messagePeriod.type}"
-                            }
+                                            "Messages from $start to $end"
+                                        }
+                                        else{
+                                            "Messages from ${messagePeriod.type}"
+                                        }
+                                    }
+                                    else ->
+                                        "Select Detail Contents"
+                                }, style = MaterialTheme.typography.bodyMedium
+                            )
                         }
-                        else ->
-                            "Select detail items"
-                    }, style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                if(isMessageAndExpended){
-                    MessageSelector(selectedPeriod = messagePeriod, onPeriodSelected = onMessagePeriodSelected)
+                        if(isMessageAndExpended){
+                            MessageSelector(selectedPeriod = messagePeriod, onPeriodSelected = onMessagePeriodSelected)
+                        }
+                    }else {
+                        TextButton(enabled = !isDetailedMessageEnabled,
+                            onClick = onPermissionRetry) {
+                            val permissionError = "Permission grant is needed."
+                            Text(text = permissionError,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 }
             }
         }
@@ -261,6 +403,8 @@ fun ContentSelectionPreview(){
     val contents = makeDummyTransferItems()
     val messageExpended = true
     val customMessageDate = Pair(null, null)
+    val context = LocalContext.current
+    val grantedPermissions = mapOf(ContentType.CALENDAR to false)
 
     val showDatePicker = remember { mutableStateOf(false) }
 
@@ -314,7 +458,11 @@ fun ContentSelectionPreview(){
                     },
                     onMessagePeriodSelected = {//viewModel.updateMessagePeriod(it)
                          },
-                    customMessageDate = customMessageDate
+                    customMessageDate = customMessageDate,
+                    onPermissionRetry = {},
+                    context = context,
+                    grantedPermissions = grantedPermissions
+
                 )
             }
         }
