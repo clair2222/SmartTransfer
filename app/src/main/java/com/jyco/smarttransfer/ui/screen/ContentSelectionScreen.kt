@@ -81,6 +81,9 @@ fun ContentSelectionScreen(navController: NavController,
 
     val TAG = "ContentSelectionScreen"
 
+    val transferProgress by viewModel.transferProgress.collectAsState()
+    val preparing by viewModel.preparing.collectAsState()
+    val transferError by viewModel.transferError.collectAsState()
     val contents by viewModel.contents.collectAsState()
     val messagePeriod by viewModel.messagePeriod.collectAsState()
     val messageExpended by viewModel.messageExpended.collectAsState()
@@ -262,14 +265,15 @@ fun ContentSelectionScreen(navController: NavController,
         }
         Spacer(Modifier.height(24.dp))
         Button(onClick = {
-            viewModel.loadContacts()
-            viewModel.loadMessages()
+            viewModel.startTransfer()
         }, Modifier.fillMaxWidth(0.8f),
             shape = RoundedCornerShape(12.dp),
-            enabled = contents.any { it.selected }
+            enabled = contents.any { it.selected } && !preparing && !transferProgress.busy
         ) {
-            Text(text = "Transfer", style = MaterialTheme.typography.titleLarge)
+            Text(text = if (preparing || transferProgress.busy) "Transferring…" else "Transfer", style = MaterialTheme.typography.titleLarge)
         }
+
+        Text(text = transferError ?: transferProgress.error ?: "${transferProgress.message} (${transferProgress.completed}/${transferProgress.total})")
 
     }
 }
