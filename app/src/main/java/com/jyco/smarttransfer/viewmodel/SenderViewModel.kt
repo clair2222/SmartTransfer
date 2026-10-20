@@ -125,6 +125,7 @@ class SenderViewModel(
         when(response){
             AuthProtocal.AUTH_OK -> {
                 _authError.value = null
+                socketManager.markAuthenticated()
                 _connectionState.value = ConnectionState.Authenticated
                 Log.d(TAG, "Sender authentication successful ")
             }
@@ -163,7 +164,7 @@ class SenderViewModel(
             if (info.isGroupOwner) {
                 val server = socketManager.startServerSocket()
                 var message = "Sender : GroupOwner"
-                if (server != null) {
+                if (server) {
                     message += " - Server"
                     onSocketConnected(message)
                 } else {
@@ -176,7 +177,7 @@ class SenderViewModel(
                 if (hostAddress != null) {
                     val client = socketManager.startClientSocket(hostAddress)
                     message += " - $hostAddress"
-                    if (client != null) {
+                    if (client) {
                         onSocketConnected(message)
                     } else {
                         message += " - Socket stopped"

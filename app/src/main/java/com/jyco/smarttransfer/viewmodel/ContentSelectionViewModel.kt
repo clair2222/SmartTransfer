@@ -19,7 +19,8 @@ import java.util.Calendar
 
 class ContentSelectionViewModel(
     private val contactRepository: ContactRepository,
-    private val messageRepository: MessageRepository
+    private val messageRepository: MessageRepository,
+    private val transferRepository: com.jyco.smarttransfer.data.transfer.TransferRepository
 ) : ViewModel() {
 
     companion object{
@@ -45,21 +46,58 @@ class ContentSelectionViewModel(
     private val _transferSelections = MutableStateFlow(TransferSelectionContent())
     val transferSelections = _transferSelections.asStateFlow()
 
-    fun buildTransferItems(): List<TransferItem>{
-        return buildList{
-            transferSelections.value.photos.map{ item->
-                add(TransferItem.Photo(item))
-            }
-            transferSelections.value.videos.map{item->
-                add(TransferItem.Video(item))
-            }
-            transferSelections.value.contacts.map { item->
-                add(TransferItem.Contact(item))
-            }
-            transferSelections.value.messages.map{ item->
-                add(TransferItem.Message(item))
+    val transferProgress = transferRepository.progress
+    private val _transferError = MutableStateFlow<String?>(null)
+    val transferError = _transferError.asStateFlow()
+    private val _preparing = MutableStateFlow(false)
+    val preparing = _preparing.asStateFlow()
+
+    fun startTransfer() {
+        if (_preparing.value || transferProgress.value.busy) return
+        val selected = _contents.value.filter { it.selected }.map { it.type }.toSet()
+        val selection = _transferSelections.value
+        val range = getMessageRange()
+        _preparing.value = true
+        _transferError.value = null
+        viewModelScope.launch {
+            try {
+                require(ContentType.CALENDAR !in selected) { "Calendar transfer is not implemented yet" }
+                if (ContentType.MESSAGES in selected && _messagePeriod.value == MessagePeriod.CUSTOM) {
+                    require(range.first != null && range.second != null && range.first!! <= range.second!!) {
+                        "Choose a valid start and end date"
+                    }
+                }
+                require(ContentType.PHOTOS !in selected || selection.photos.isNotEmpty()) { "Select photos first" }
+                require(ContentType.VIDEOS !in selected || selection.videos.isNotEmpty()) { "Select videos first" }
+                // Await provider queries before creating a single, consistent transfer snapshot.
+                val gathered = TransferSelectionContent(
+                    photos = if (ContentType.PHOTOS in selected) selection.photos else emptyList(),
+                    videos = if (ContentType.VIDEOS in selected) selection.videos else emptyList(),
+                    contacts = if (ContentType.CONTACTS in selected) contactRepository.getContacts() else emptyList(),
+                    messages = if (ContentType.MESSAGES in selected) messageRepository.getMessages(range.first, range.second) else emptyList()
+                )
+                _transferSelections.value = gathered
+                transferRepository.send(buildTransferItems(gathered))
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _transferError.value = error.message ?: "Transfer failed"
+            } finally {
+                _preparing.value = false
             }
         }
+    }
+
+    fun buildTransferItems(selection: TransferSelectionContent = _transferSelections.value): List<TransferItem> = buildList {
+        selection.photos.forEach { add(TransferItem.Photo(it)) }
+        selection.videos.forEach { add(TransferItem.Video(it)) }
+        selection.contacts.forEach { add(TransferItem.Contact(it)) }
+        selection.messages.forEach { add(TransferItem.Message(it)) }
+    }
+
+    override fun onCleared() {
+        if (_preparing.value || transferProgress.value.busy) transferRepository.cancel()
+        super.onCleared()
     }
     fun toggleContent(type : ContentType){
         _contents.update { items->
@@ -118,7 +156,12 @@ class ContentSelectionViewModel(
 
         return when(_messagePeriod.value){
             MessagePeriod.CUSTOM ->{
-                _customMessageDate.value.first to _customMessageDate.value.second
+                val (start, end) = _customMessageDate.value
+                fun localDay(value: Long): java.time.LocalDate = java.time.Instant.ofEpochMilli(value)
+                    .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                val zone = java.time.ZoneId.systemDefault()
+                start?.let { localDay(it).atStartOfDay(zone).toInstant().toEpochMilli() } to
+                    end?.let { localDay(it).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1 }
             }
             MessagePeriod.THREE_MONTHS ->{
                 calendar.add(Calendar.MONTH, -3)

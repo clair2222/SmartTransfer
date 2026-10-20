@@ -24,7 +24,15 @@ class SocketManager() {
     private var serverSocket:ServerSocket? = null
 
     private var writer : BufferedWriter? = null
-    private var reader : BufferedReader? = null
+    private var reader : java.io.DataInputStream? = null
+    var authenticated: Boolean = false
+        private set
+
+    fun markAuthenticated() { authenticated = true }
+
+    fun transferInput() = reader ?: error("Socket is not connected")
+    fun transferOutput() = socket?.getOutputStream()?.let { java.io.DataOutputStream(it) }
+        ?: error("Socket is not connected")
 
     fun setSocket(socket: Socket) {
         this.socket = socket
@@ -38,7 +46,7 @@ class SocketManager() {
     fun getSocket() : Socket? = socket
     fun initializedSocket(connectedSocket: Socket){
         socket = connectedSocket
-        reader = BufferedReader(InputStreamReader(connectedSocket.getInputStream()))
+        reader = java.io.DataInputStream(connectedSocket.getInputStream())
         writer = BufferedWriter(OutputStreamWriter(connectedSocket.getOutputStream()))
     }
 
@@ -94,7 +102,15 @@ class SocketManager() {
     suspend fun readLines()=withContext(Dispatchers.IO){
         runCatching {
             val currentReader = reader ?: throw IllegalStateException("Socket reader is not initialized")
-            currentReader.readLine()?: throw IOException("Remote device closed the socket")
+            buildString {
+                while (true) {
+                    val byte = currentReader.read()
+                    if (byte == -1) throw IOException("Remote device closed the socket")
+                    if (byte == 10) break
+                    require(length < 1024) { "Authentication line too long" }
+                    if (byte != 13) append(byte.toChar())
+                }
+            }
 
         }.onFailure { throwable ->
             Log.d(TAG, "read line failed : ", throwable)
@@ -110,6 +126,7 @@ class SocketManager() {
     }
 
     fun close(){
+        authenticated = false
         runCatching { socket?.close() }
         runCatching { serverSocket?.close()  }
         runCatching { reader?.close() }

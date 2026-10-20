@@ -20,16 +20,18 @@ val appModule = module {
     single{
         MessageRepository(context = get())
     }
-    factory{
+    single{
         SocketManager()
     }
+    single { com.jyco.smarttransfer.data.transfer.TransferRepository(get(), get()) }
     viewModel{
         SenderViewModel(wifiDirectManager = get(), socketManager = get())
     }
     viewModel{
         ReceiverViewModel(wifiDirectManager = get(), socketManager = get())
     }
+    viewModel { com.jyco.smarttransfer.viewmodel.ReceivingViewModel(get()) }
     viewModel {
-        ContentSelectionViewModel(contactRepository = get(), messageRepository = get())
+        ContentSelectionViewModel(contactRepository = get(), messageRepository = get(), transferRepository = get())
     }
 }
