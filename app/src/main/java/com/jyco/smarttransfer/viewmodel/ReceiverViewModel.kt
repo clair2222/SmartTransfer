@@ -145,7 +145,7 @@ class ReceiverViewModel(
             if (info.isGroupOwner) {
                 var message = "Receiver : GroupOwner"
                 val socket = socketManager.startServerSocket()
-                if (socket != null) {
+                if (socket) {
                     message += " - Server"
                     onSocketConnected(message)
                     startReceivierAuthentication()
@@ -160,7 +160,7 @@ class ReceiverViewModel(
                     message += " - $hostAddress"
                     onSocketConnected(message)
                     val socket = socketManager.startClientSocket(hostAddress)
-                    if (socket != null) {
+                    if (socket) {
                         onSocketConnected(message)
                         startReceivierAuthentication()
                     } else {
@@ -235,7 +235,8 @@ class ReceiverViewModel(
         if(result.isSuccess){
             _authPin.value = null
             _authError.value = null
-            _connectionState.value = ConnectionState.Authenticated
+            socketManager.markAuthenticated()
+                _connectionState.value = ConnectionState.Authenticated
             Log.d(TAG, "Receiver : handleAuthSuccess : authentication Success")
         }else{
             val message = "fail to send result of auth_ok"

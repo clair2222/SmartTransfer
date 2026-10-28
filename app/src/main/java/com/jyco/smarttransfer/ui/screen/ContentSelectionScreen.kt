@@ -39,7 +39,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +54,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.transfer.ContentSelectionItem
@@ -81,10 +81,13 @@ fun ContentSelectionScreen(navController: NavController,
 
     val TAG = "ContentSelectionScreen"
 
-    val contents by viewModel.contents.collectAsState()
-    val messagePeriod by viewModel.messagePeriod.collectAsState()
-    val messageExpended by viewModel.messageExpended.collectAsState()
-    val customMessageDate by viewModel.customMessageDate.collectAsState()
+    val transferProgress by viewModel.transferProgress.collectAsStateWithLifecycle()
+    val preparing by viewModel.preparing.collectAsStateWithLifecycle()
+    val transferError by viewModel.transferError.collectAsStateWithLifecycle()
+    val contents by viewModel.contents.collectAsStateWithLifecycle()
+    val messagePeriod by viewModel.messagePeriod.collectAsStateWithLifecycle()
+    val messageExpended by viewModel.messageExpended.collectAsStateWithLifecycle()
+    val customMessageDate by viewModel.customMessageDate.collectAsStateWithLifecycle()
 
     val showDatePicker = remember { mutableStateOf(false) }
     var requestPermissionState by remember{mutableStateOf<ContentType?>(null)}
@@ -262,14 +265,15 @@ fun ContentSelectionScreen(navController: NavController,
         }
         Spacer(Modifier.height(24.dp))
         Button(onClick = {
-            viewModel.loadContacts()
-            viewModel.loadMessages()
+            viewModel.startTransfer()
         }, Modifier.fillMaxWidth(0.8f),
             shape = RoundedCornerShape(12.dp),
-            enabled = contents.any { it.selected }
+            enabled = contents.any { it.selected } && !preparing && !transferProgress.busy
         ) {
-            Text(text = "Transfer", style = MaterialTheme.typography.titleLarge)
+            Text(text = if (preparing || transferProgress.busy) "Transferring…" else "Transfer", style = MaterialTheme.typography.titleLarge)
         }
+
+        Text(text = transferError ?: transferProgress.error ?: "${transferProgress.message} (${transferProgress.completed}/${transferProgress.total})")
 
     }
 }

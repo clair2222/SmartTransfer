@@ -20,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
@@ -60,7 +61,7 @@ fun SenderScreen(navController: NavController,
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var requestKey by remember { mutableIntStateOf(1000) }
     var shouldCheckOnResume by remember { mutableStateOf(false) }
-    val devices by viewModel.devices.collectAsState()
+    val devices by viewModel.devices.collectAsStateWithLifecycle()
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver{ _, event ->
@@ -93,9 +94,11 @@ fun SenderScreen(navController: NavController,
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.msg.collect{
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+    LaunchedEffect(lifecycle, viewModel, context) {
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.msg.collect { message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -133,8 +136,8 @@ fun SenderScreen(navController: NavController,
 @Composable
 fun SenderContent(navController: NavController,
                   devices : List<WifiP2pDevice>, viewModel: SenderViewModel){
-    val state by viewModel.connectionState.collectAsState()
-    val enteredPin by viewModel.enteredPin.collectAsState()
+    val state by viewModel.connectionState.collectAsStateWithLifecycle()
+    val enteredPin by viewModel.enteredPin.collectAsStateWithLifecycle()
     var subTitle = "This is Sender Screen"
     var inProgress = remember{ mutableStateOf(false) }
 
