@@ -39,7 +39,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.transfer.ContentSelectionItem
 import com.jyco.smarttransfer.data.transfer.ContentType
@@ -81,10 +81,10 @@ fun ContentSelectionScreen(navController: NavController,
 
     val TAG = "ContentSelectionScreen"
 
-    val contents by viewModel.contents.collectAsState()
-    val messagePeriod by viewModel.messagePeriod.collectAsState()
-    val messageExpended by viewModel.messageExpended.collectAsState()
-    val customMessageDate by viewModel.customMessageDate.collectAsState()
+    val contents by viewModel.contents.collectAsStateWithLifecycle()
+    val messagePeriod by viewModel.messagePeriod.collectAsStateWithLifecycle()
+    val messageExpended by viewModel.messageExpended.collectAsStateWithLifecycle()
+    val customMessageDate by viewModel.customMessageDate.collectAsStateWithLifecycle()
 
     val showDatePicker = remember { mutableStateOf(false) }
     var requestPermissionState by remember{mutableStateOf<ContentType?>(null)}

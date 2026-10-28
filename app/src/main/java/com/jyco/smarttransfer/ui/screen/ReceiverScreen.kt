@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.jyco.smarttransfer.data.wifi.WifiDirectBroadcastReceiver
 import com.jyco.smarttransfer.ui.common.ShowResult
@@ -68,7 +69,7 @@ fun ReceiverScreen(navController: NavController,
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var requestKey by remember{ mutableIntStateOf(0)}
     var shouldCheckOnResume by remember { mutableStateOf(false) }
-    val devices by viewModel.devices.collectAsState()
+    val devices by viewModel.devices.collectAsStateWithLifecycle()
 
 
     DisposableEffect(lifecycleOwner){
@@ -103,9 +104,12 @@ fun ReceiverScreen(navController: NavController,
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.msg.collect{
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+
+    LaunchedEffect(lifecycleOwner, viewModel, context) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED ){
+            viewModel.msg.collect{message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -148,8 +152,8 @@ fun ReceiverScreen(navController: NavController,
 @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
 @Composable
 fun ReceiverContent(navController: NavController, devices : List<WifiP2pDevice>, viewModel:ReceiverViewModel){
-    val pin by viewModel.authPin.collectAsState()
-    val connectionState by viewModel.conncetionState.collectAsState()
+    val pin by viewModel.authPin.collectAsStateWithLifecycle()
+    val connectionState by viewModel.conncetionState.collectAsStateWithLifecycle()
     var subTitle by remember { mutableStateOf("") }
 
     when(connectionState){
@@ -200,7 +204,8 @@ fun SearchingContent(subTitle : String, devices : List<WifiP2pDevice>, viewModel
 //        }
 //    }
     Column(modifier = Modifier
-        .fillMaxSize().padding(24.dp),
+        .fillMaxSize()
+        .padding(24.dp),
         //.background(MaterialTheme.colorScheme.surface),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
